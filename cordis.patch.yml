@@ -1,0 +1,9 @@
+- insert:
+    - id: dsh-xmm-workbuddy
+      name: dsh-xmm-workbuddy
+      config:
+        enabled: true
+        apiPath: /v1
+        apiKeys: xmm-workbuddy-local
+        defaultRegion: cn
+        allowRemote: false

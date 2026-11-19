@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+  <defs>
+    <linearGradient id="xmmBridge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#0ea5a4"/>
+    </linearGradient>
+  </defs>
+  <!-- left bracket (open API side) -->
+  <path d="M13 8.5H8.5a2 2 0 0 0-2 2V15a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4.5a2 2 0 0 0 2 2H13"
+        fill="none" stroke="url(#xmmBridge)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- right bracket (model side) -->
+  <path d="M23 8.5h4.5a2 2 0 0 1 2 2V15a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4.5a2 2 0 0 1-2 2H23"
+        fill="none" stroke="url(#xmmBridge)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- central link / spark -->
+  <path d="M14.5 18h7" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="18" cy="18" r="3.1" fill="#ffffff" stroke="url(#xmmBridge)" stroke-width="2.2"/>
+  <circle cx="18" cy="18" r="1.05" fill="url(#xmmBridge)"/>
+</svg>
