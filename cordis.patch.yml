@@ -7,3 +7,5 @@
         apiKeys: xmm-workbuddy-local
         defaultRegion: cn
         allowRemote: false
+        fixedPort: 8080
+        showSidebar: true

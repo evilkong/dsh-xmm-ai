@@ -1,6 +1,6 @@
 {
   "name": "dsh-xmm-workbuddy",
-  "version": "1.3.0",
+  "version": "1.5.1",
   "private": true,
   "type": "module",
   "description": "Expose the WorkBuddy models connected by dsh-connect-workbuddy as an OpenAI-compatible HTTP API, with a sidebar settings page.",

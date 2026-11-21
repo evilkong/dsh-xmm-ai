@@ -96,6 +96,10 @@ window.__ModuleLoader__.load({
         'field.region.global': 'International (workbuddy-global)',
         'field.allowRemote': 'Allow remote clients',
         'field.allowRemote.hint': 'Off: loopback only. On: accept clients from the network. Only on a trusted network.',
+        'field.fixedPort': 'Fixed port (standalone API)',
+        'field.fixedPort.hint': 'The Desktop host changes its own port on every launch. Set a port here (e.g. 8080) to give this API a stable address via an independent listener. 0 disables it and uses the host port.',
+        'field.showSidebar': 'Show entry in left sidebar',
+        'field.showSidebar.hint': 'Off hides this plugin\'s row from the left sidebar. The settings entry and the fixed-port API keep working.',
         'button.save': 'Save',
         'button.saving': 'Saving…',
         'button.refresh': 'Reload',
@@ -131,6 +135,10 @@ window.__ModuleLoader__.load({
         'field.region.global': '国际（workbuddy-global）',
         'field.allowRemote': '允许远程客户端',
         'field.allowRemote.hint': '关闭：仅本机访问。开启：接受来自网络的请求。请仅在可信网络开启。',
+        'field.fixedPort': '固定端口（独立接口）',
+        'field.fixedPort.hint': '桌面端每次启动都会改变自身端口。这里填一个端口（如 8080），插件会另外监听该端口，让接口地址固定不变。填 0 则关闭，继续用宿主端口。',
+        'field.showSidebar': '在左侧菜单显示入口',
+        'field.showSidebar.hint': '关闭后左侧菜单不再显示本插件入口；设置入口和固定端口接口不受影响。',
         'button.save': '保存',
         'button.saving': '保存中…',
         'button.refresh': '重新加载',
@@ -303,7 +311,17 @@ window.__ModuleLoader__.load({
       return 'xmm-' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
     }
 
-    const BLANK_DRAFT = { enabled: true, apiPath: '/v1', apiKeys: '', defaultRegion: 'cn', allowRemote: false }
+    const BLANK_DRAFT = { enabled: true, apiPath: '/v1', apiKeys: '', defaultRegion: 'cn', allowRemote: false, fixedPort: 0, showSidebar: true }
+
+    /** Notify the host page that the sidebar-entry preference changed. */
+    function notifySidebarChange(show) {
+      try {
+        globalThis.dispatchEvent?.(new CustomEvent('xmm-workbuddy-sidebar-change', { detail: { show } }))
+      } catch { /* best effort */ }
+      try {
+        if (globalThis.__xmmWorkbuddySidebarChanged) globalThis.__xmmWorkbuddySidebarChanged(show)
+      } catch { /* best effort */ }
+    }
 
     /**
      * Whether the render-triggered first load already fired.
@@ -495,6 +513,8 @@ window.__ModuleLoader__.load({
         el('option', { value: 'global' }, ['国际（workbuddy-global）']),
       ])
       const remoteInput = el('input', { type: 'checkbox', style: DLG.check, id: 'xmm-dlg-remote' })
+      const portInput = el('input', { type: 'number', min: '0', max: '65535', style: DLG.input, id: 'xmm-dlg-port', value: '0' })
+      const sidebarInput = el('input', { type: 'checkbox', style: DLG.check, id: 'xmm-dlg-sidebar' })
 
       /**
        * Editable API-key rows.
@@ -642,6 +662,20 @@ window.__ModuleLoader__.load({
           ]),
         ]),
 
+        el('div', { style: DLG.row }, [
+          el('label', { style: DLG.label, for: 'xmm-dlg-port' }, ['固定端口（独立接口）']),
+          portInput,
+          el('div', { style: DLG.hint }, ['桌面端每次启动都会改变自身端口。填一个端口（如 8080）让接口地址固定；填 0 则用宿主端口。保存后可能需要重启应用才会监听新端口。']),
+        ]),
+
+        el('div', { style: DLG.checkRow }, [
+          sidebarInput,
+          el('div', null, [
+            el('label', { style: DLG.label, for: 'xmm-dlg-sidebar' }, ['在左侧菜单显示入口']),
+            el('div', { style: DLG.hint }, ['关闭后左侧菜单不再显示本插件入口；设置入口和固定端口接口不受影响。']),
+          ]),
+        ]),
+
         el('div', { style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px' }, [
           saveBtn,
           reloadBtn,
@@ -662,16 +696,28 @@ window.__ModuleLoader__.load({
         refreshKeyCount()
         regionSelect.value = cfg.defaultRegion === 'global' ? 'global' : 'cn'
         remoteInput.checked = cfg.allowRemote === true
+        portInput.value = String(Number(cfg.fixedPort) || 0)
+        sidebarInput.checked = cfg.showSidebar !== false
         refreshUrls()
       }
 
       /** The Harness origin, read from the status route; addresses derive from it. */
       let origin = ''
 
-      /** Recompute every displayed endpoint from the current origin and prefix. */
+      /**
+       * Recompute every displayed endpoint.
+       *
+       * When a fixed port is set, the standalone listener serves the API
+       * directly under the prefix (`http://127.0.0.1:<port><prefix>`), so the
+       * address stays stable across Desktop restarts. Otherwise fall back to
+       * the host's changing origin and the plugin route prefix.
+       */
       const refreshUrls = () => {
         const prefix = pathInput.value || '/v1'
-        const base = `${origin}/plugins/dsh-xmm-workbuddy${prefix}`
+        const port = Number(portInput.value) || 0
+        const base = port > 0
+          ? `http://127.0.0.1:${port}${prefix}`
+          : `${origin}/plugins/dsh-xmm-workbuddy${prefix}`
         baseUrlLine.textContent = base
         modelsLine.textContent = `${base}/models`
         chatLine.textContent = `${base}/chat/completions`
@@ -704,6 +750,7 @@ window.__ModuleLoader__.load({
       }
 
       pathInput.addEventListener('input', refreshUrls)
+      portInput.addEventListener('input', refreshUrls)
 
       saveBtn.addEventListener('click', async () => {
         saveBtn.disabled = true
@@ -715,6 +762,8 @@ window.__ModuleLoader__.load({
             apiKeys: serialiseKeys(),
             defaultRegion: regionSelect.value,
             allowRemote: remoteInput.checked,
+            fixedPort: Math.max(0, Math.min(65535, Number(portInput.value) || 0)),
+            showSidebar: sidebarInput.checked,
           }
           const response = await fetch(SAVE_PATH, {
             method: 'POST',
@@ -725,6 +774,7 @@ window.__ModuleLoader__.load({
           if (!response.ok || data.ok === false) throw new Error(data.error || `HTTP ${response.status}`)
           setStatus('已保存，立即生效。', false)
           report('dialog-saved', '')
+          notifySidebarChange(body.showSidebar)
         } catch (error) {
           setStatus(`保存失败：${error && error.message ? error.message : error}`, true)
           report('dialog-save-failed', String(error && error.message ? error.message : error))
@@ -848,26 +898,94 @@ window.__ModuleLoader__.load({
         console.error('[dsh-xmm-workbuddy] main panel registration failed:', error)
       }
 
-      try {
-        // The sidebar row. Its id addresses the `main` key above.
-        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
-          name: 'sidebar.panellist',
-          id: PANEL_ID,
-          order: 3,
-          label: () => {
-            const dict = copy[FALLBACK_LOCALE] ?? copy.en
-            return dict['nav.label']
-          },
-          locale: NAMESPACE,
-        }, Icon))
-        report('sidebar-registered', `id=${PANEL_ID}`)
-      } catch (error) {
-        report('sidebar-register-failed', error && error.message ? error.message : String(error))
-        console.error('[dsh-xmm-workbuddy] sidebar entry registration failed:', error)
+      /**
+       * Sidebar row, controlled by the `showSidebar` setting.
+       *
+       * The host's pin/unpin is in-memory only (lost on restart), so a durable
+       * switch must register or withdraw the row itself. The `main` panel above
+       * stays registered unconditionally: the settings entry and the fixed-port
+       * API can still reach it when the sidebar row is hidden.
+       */
+      let sidebarRowDisposer = null
+      const syncSidebarRow = (show) => {
+        // Dispose first: a live key/id cannot be registered twice, and the
+        // renderer caches inject results by object identity, so a changed
+        // decision must re-register rather than reuse the old entry.
+        if (sidebarRowDisposer) {
+          try { sidebarRowDisposer() } catch { /* already disposed */ }
+          sidebarRowDisposer = null
+        }
+        if (!show) { report('sidebar-row-hidden', ''); return }
+        try {
+          sidebarRowDisposer = ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+            name: 'sidebar.panellist',
+            id: PANEL_ID,
+            order: 3,
+            label: () => {
+              const dict = copy[FALLBACK_LOCALE] ?? copy.en
+              return dict['nav.label']
+            },
+            locale: NAMESPACE,
+          }, Icon))
+          report('sidebar-row-registered', '')
+        } catch (error) {
+          report('sidebar-register-failed', error && error.message ? error.message : String(error))
+          console.error('[dsh-xmm-workbuddy] sidebar entry registration failed:', error)
+        }
       }
 
-      // The floating overlay button was removed: the sidebar page now hosts the
-      // form directly, so the extra launcher is unnecessary.
+      // Start visible, then reconcile with the persisted setting.
+      syncSidebarRow(true)
+      try {
+        fetch(CONFIG_PATH, { headers: { accept: 'application/json' } })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => { if (data && data.config) syncSidebarRow(data.config.showSidebar !== false) })
+          .catch(() => {})
+      } catch { /* default visible is fine */ }
+
+      // Immediate feedback when the form saves a new value.
+      try {
+        globalThis.addEventListener?.('xmm-workbuddy-sidebar-change', (event) => {
+          const show = event && event.detail && typeof event.detail.show === 'boolean' ? event.detail.show : true
+          syncSidebarRow(show)
+        })
+      } catch { /* best effort */ }
+
+      /**
+       * Settings-page entry.
+       *
+       * A full `settings.section` (not a `settings.plugins.tab`) so the whole
+       * configuration form lives in Settings → this section, exactly like the
+       * sibling workbuddy plugin. The section icon shares the same id.
+       */
+      try {
+        ctx.slots.inject('settings.section', () => {
+          const disposers = []
+          disposers.push(ctx.slots.register({
+            name: 'settings.section',
+            id: PANEL_ID,
+            order: 35,
+            label: () => {
+              const dict = copy[FALLBACK_LOCALE] ?? copy.en
+              return dict['nav.label']
+            },
+            locale: NAMESPACE,
+            inject: () => ({ t: makeT({}) }),
+          }, Page))
+          try {
+            disposers.push(ctx.slots.inject('settings.section.icon', () => ctx.slots.register({
+              name: 'settings.section.icon',
+              id: PANEL_ID,
+              locale: NAMESPACE,
+            }, (props) => h(Icon, { size: props && typeof props.size === 'number' ? props.size : 16 }))))
+          } catch { /* icon is optional */ }
+          report('settings-registered', `id=${PANEL_ID}`)
+          return () => disposers.forEach((d) => { try { d() } catch { /* noop */ } })
+        })
+      } catch (error) {
+        report('settings-register-failed', error && error.message ? error.message : String(error))
+        console.error('[dsh-xmm-workbuddy] settings entry registration failed:', error)
+      }
 
       return { openPanel }
     }

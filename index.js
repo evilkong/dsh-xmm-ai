@@ -10,7 +10,15 @@
  * Provider routes owned by dsh-connect-workbuddy:
  *   - "workbuddy"         (CN / domestic)
  *   - "workbuddy-global"  (international)
+ *
+ * The Desktop host passes `--port 0` to its own webserver, so that port changes
+ * on every launch. When `fixedPort` is set, this plugin also runs a small
+ * standalone `node:http` listener on that exact port, serving the same OpenAI
+ * surface. It reuses the host's LLM service through `ctx`, so it still goes
+ * through WorkBuddy's signed-in accounts and the shared model catalog.
  */
+
+import { createServer } from 'node:http'
 
 const CN_PROVIDER = 'workbuddy'
 const GLOBAL_PROVIDER = 'workbuddy-global'
@@ -36,11 +44,22 @@ const CONFIG_DEFAULTS = Object.freeze({
   defaultRegion: 'cn',
   allowRemote: false,
   apiKeys: '',
+  fixedPort: 0,
+  showSidebar: true,
 })
 
 /** Coerce one raw value into the shape this plugin accepts. */
 function normalizeField(key, value) {
   switch (key) {
+    case 'showSidebar':
+      // Absent means a fresh install: show the entry by default. Only an
+      // explicitly saved `false` hides it.
+      return value === undefined ? CONFIG_DEFAULTS.showSidebar : value === true
+    case 'fixedPort': {
+      // 0 disables the standalone listener; otherwise a real TCP port.
+      const n = typeof value === 'number' ? value : Number(value)
+      return Number.isInteger(n) && n >= 0 && n <= 65535 ? n : 0
+    }
     case 'enabled':
       // Absent means "the user has not decided yet", which must serve traffic:
       // only an explicit saved `false` turns the API off.
@@ -102,6 +121,8 @@ function readConfig(config) {
     defaultRegion: normalizeField('defaultRegion', unwrap(raw.defaultRegion)),
     allowRemote: normalizeField('allowRemote', unwrap(raw.allowRemote)),
     apiKeys: normalizeField('apiKeys', unwrap(raw.apiKeys)),
+    fixedPort: normalizeField('fixedPort', unwrap(raw.fixedPort)),
+    showSidebar: normalizeField('showSidebar', unwrap(raw.showSidebar)),
   }
 }
 
@@ -413,6 +434,78 @@ function checkAccess(req, res, config) {
   return true
 }
 
+/**
+ * Start a standalone HTTP listener on a fixed port.
+ *
+ * Returns a disposer. The handler shares the exact same request path as the
+ * host-registered routes, so both surfaces behave identically.
+ */
+function startFixedServer(ctx, currentConfig, getServices) {
+  const initial = currentConfig()
+  const port = initial.fixedPort
+  if (!port) return () => {}
+
+  let server
+  let started = false
+  try {
+    server = createServer(async (req, res) => {
+      try {
+        const cfg = currentConfig()
+        const services = getServices()
+        const url = new URL(req.url ?? '/', 'http://placeholder')
+        const prefix = cfg.apiPath || '/v1'
+        let path = url.pathname
+
+        // Health is a fixed path, independent of the configurable prefix.
+        if (path === '/health') {
+          const providers = (services.llm?.listProviders?.() ?? []).map((p) => p?.id).filter((id) => PROVIDERS.includes(id))
+          return json(res, 200, { status: 'ok', service: 'dsh-xmm-workbuddy', providers })
+        }
+
+        // Accept both the bare prefix and the full plugin path for convenience.
+        const bare = path.startsWith(prefix)
+          ? path.slice(prefix.length)
+          : path.startsWith(`${BASE}${prefix}`)
+            ? path.slice(`${BASE}${prefix}`.length)
+            : null
+        if (bare !== '/models' && bare !== '/chat/completions') {
+          return json(res, 404, { error: 'not found' })
+        }
+        const isModels = bare === '/models'
+        if (req.method !== (isModels ? 'GET' : 'POST')) {
+          res.setHeader('Allow', isModels ? 'GET' : 'POST')
+          return json(res, 405, { error: 'method not allowed' })
+        }
+        if (!checkAccess(req, res, cfg)) return
+        if (isModels) return handleModels(res, services)
+        return handleChat(req, res, services, cfg, services.attachments)
+      } catch (error) {
+        if (!res.writableEnded) {
+          json(res, 500, { error: { message: error instanceof Error ? error.message : String(error), type: 'server_error', code: 'server_error' } })
+        }
+      }
+    })
+
+    server.on('error', (error) => {
+      ctx.logger?.warn?.(`dsh-xmm-workbuddy: fixed port ${port} failed: ${error.message}`)
+    })
+    // Bind all interfaces when remote clients are allowed; otherwise loopback.
+    // Binding is fixed at listen time, so changing `allowRemote` re-registers
+    // this effect (see the key below) and the listener is recreated.
+    const bindHost = initial.allowRemote ? '0.0.0.0' : '127.0.0.1'
+    server.listen(port, bindHost, () => { started = true })
+  } catch (error) {
+    ctx.logger?.warn?.(`dsh-xmm-workbuddy: could not start fixed server: ${error.message}`)
+    return () => {}
+  }
+
+  return () => {
+    if (!server) return
+    try { server.close() } catch { /* already closed */ }
+    try { server.closeAllConnections?.() } catch { /* optional */ }
+  }
+}
+
 export function apply(ctx, config) {
   /** Volatile config is read live on every request so the settings page takes effect without a reload. */
   const currentConfig = () => readConfig(config)
@@ -513,6 +606,7 @@ export function apply(ctx, config) {
           if (!(key in body)) continue
           const value = body[key]
           if (key === 'enabled' && typeof value !== 'boolean') return json(res, 400, { error: 'enabled must be a boolean' })
+          if (key === 'showSidebar' && typeof value !== 'boolean') return json(res, 400, { error: 'showSidebar must be a boolean' })
           if (key === 'allowRemote' && typeof value !== 'boolean') {
             return json(res, 400, { error: 'allowRemote must be a boolean' })
           }
@@ -523,6 +617,14 @@ export function apply(ctx, config) {
             return json(res, 400, { error: 'apiPath must be a plain path such as /v1 (letters, digits and - _ . / only)' })
           }
           if (key === 'apiKeys' && typeof value !== 'string') return json(res, 400, { error: 'apiKeys must be a string' })
+          if (key === 'fixedPort') {
+            const n = Number(value)
+            if (!Number.isInteger(n) || n < 0 || n > 65535) {
+              return json(res, 400, { error: 'fixedPort must be 0 or a port from 1 to 65535' })
+            }
+            patch[key] = n
+            continue
+          }
           patch[key] = value
         }
         if (Object.keys(patch).length === 0) return json(res, 400, { error: 'no recognized config fields' })
@@ -620,105 +722,128 @@ export function apply(ctx, config) {
         const cfg = currentConfig()
         if (!checkAccess(req, res, cfg)) return
         if (isModels) return handleModels(res, webCtx)
-        return handleChat(req, res, webCtx, cfg)
+        return handleChat(req, res, webCtx, cfg, ctx.get?.('attachments'))
       },
     })
 
-    async function handleModels(res, webCtxArg) {
-      try {
-        const llm = webCtxArg.llm
-        if (!llm) return openAiError(res, 503, 'Harness LLM service is not available', 'service_unavailable')
-        const live = new Set((llm.listProviders?.() ?? []).map((p) => p?.id))
-        const data = []
-        const seen = new Set()
-        const created = Math.floor(Date.now() / 1000)
-        for (const provider of PROVIDERS) {
-          if (!live.has(provider)) continue
-          let models
-          try {
-            models = await llm.listModels(provider)
-          } catch {
-            models = []
-          }
-          for (const model of models ?? []) {
-            if (typeof model?.id !== 'string' || !model.id) continue
-            if (!seen.has(model.id)) {
-              seen.add(model.id)
-              data.push({ id: model.id, object: 'model', created, owned_by: provider })
-            }
-            const alias = `${provider}/${model.id}`
-            if (!seen.has(alias)) {
-              seen.add(alias)
-              data.push({ id: alias, object: 'model', created, owned_by: provider })
-            }
-          }
-        }
-        json(res, 200, { object: 'list', data })
-      } catch (error) {
-        openAiError(res, 500, error instanceof Error ? error.message : String(error), 'server_error')
-      }
-    }
-
-
-    async function handleChat(req, res, webCtxArg, cfg) {
-      let body
-      try {
-        body = JSON.parse(await readBody(req))
-      } catch (error) {
-        return openAiError(res, 400, `invalid JSON body: ${error instanceof Error ? error.message : String(error)}`)
-      }
-      if (body === null || typeof body !== 'object' || Array.isArray(body)) {
-        return openAiError(res, 400, 'body must be a JSON object')
-      }
-      if (typeof body.model !== 'string' || !body.model) {
-        return openAiError(res, 400, 'missing required field: model')
-      }
-      if (!Array.isArray(body.messages)) {
-        return openAiError(res, 400, 'missing required field: messages (array)')
-      }
-
-      const llm = webCtxArg.llm
-      if (!llm) return openAiError(res, 503, 'Harness LLM service is not available', 'service_unavailable')
-
-      let model = body.model
-      let provider
-      if (model.startsWith(`${CN_PROVIDER}/`)) {
-        provider = CN_PROVIDER
-        model = model.slice(CN_PROVIDER.length + 1)
-      } else if (model.startsWith(`${GLOBAL_PROVIDER}/`)) {
-        provider = GLOBAL_PROVIDER
-        model = model.slice(GLOBAL_PROVIDER.length + 1)
-      } else {
-        provider = await createCatalogResolver(llm)(model, cfg.defaultRegion)
-      }
-      if (!model) return openAiError(res, 400, 'empty model id')
-
-      const live = new Set((llm.listProviders?.() ?? []).map((p) => p?.id))
-      if (!live.has(provider)) {
-        return openAiError(
-          res,
-          503,
-          `WorkBuddy provider "${provider}" is not registered. Enable and sign in to dsh-connect-workbuddy.`,
-          'provider_unavailable',
-        )
-      }
-
-      let options
-      try {
-        options = await buildGenerateOptions(body, provider, model, ctx.get?.('attachments'))
-      } catch (error) {
-        return openAiError(res, 400, error instanceof Error ? error.message : String(error), 'invalid_image_input')
-      }
-      const streamWanted = body.stream === true
-      const controller = new AbortController()
-      options.signal = controller.signal
-      if (req.on) req.on('close', () => controller.abort())
-
-      const stops = parseStop(body)
-      if (streamWanted) await handleStream(req, res, llm, options, provider, model, stops)
-      else await handleOnce(res, llm, options, provider, model, stops)
-    }
   })
+
+  /**
+   * Optional standalone listener on a fixed port.
+   *
+   * The Desktop host always passes `--port 0` to its own webserver, so its port
+   * changes on every launch. When the user sets `fixedPort`, this independent
+   * listener gives the OpenAI API a stable address. It reads the same services
+   * from `ctx` as the host-registered routes, so both surfaces are equivalent.
+   */
+  const listenerServices = {
+    get llm() { return ctx.get?.('llm') },
+    get attachments() { return ctx.get?.('attachments') },
+  }
+
+  /**
+   * The bind address is fixed at `listen()` time. The settings editor restarts
+   * the plugin on a config write, which re-runs this effect and recreates the
+   * listener with the new port / `allowRemote` binding.
+   */
+  ctx.effect(() => {
+    return startFixedServer(ctx, currentConfig, () => listenerServices)
+  }, `${BASE}: fixed-port listener`)
+}
+
+async function handleModels(res, webCtxArg) {
+  try {
+    const llm = webCtxArg.llm
+    if (!llm) return openAiError(res, 503, 'Harness LLM service is not available', 'service_unavailable')
+    const live = new Set((llm.listProviders?.() ?? []).map((p) => p?.id))
+    const data = []
+    const seen = new Set()
+    const created = Math.floor(Date.now() / 1000)
+    for (const provider of PROVIDERS) {
+      if (!live.has(provider)) continue
+      let models
+      try {
+        models = await llm.listModels(provider)
+      } catch {
+        models = []
+      }
+      for (const model of models ?? []) {
+        if (typeof model?.id !== 'string' || !model.id) continue
+        if (!seen.has(model.id)) {
+          seen.add(model.id)
+          data.push({ id: model.id, object: 'model', created, owned_by: provider })
+        }
+        const alias = `${provider}/${model.id}`
+        if (!seen.has(alias)) {
+          seen.add(alias)
+          data.push({ id: alias, object: 'model', created, owned_by: provider })
+        }
+      }
+    }
+    json(res, 200, { object: 'list', data })
+  } catch (error) {
+    openAiError(res, 500, error instanceof Error ? error.message : String(error), 'server_error')
+  }
+}
+
+
+async function handleChat(req, res, webCtxArg, cfg, attachments) {
+  let body
+  try {
+    body = JSON.parse(await readBody(req))
+  } catch (error) {
+    return openAiError(res, 400, `invalid JSON body: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return openAiError(res, 400, 'body must be a JSON object')
+  }
+  if (typeof body.model !== 'string' || !body.model) {
+    return openAiError(res, 400, 'missing required field: model')
+  }
+  if (!Array.isArray(body.messages)) {
+    return openAiError(res, 400, 'missing required field: messages (array)')
+  }
+
+  const llm = webCtxArg.llm
+  if (!llm) return openAiError(res, 503, 'Harness LLM service is not available', 'service_unavailable')
+
+  let model = body.model
+  let provider
+  if (model.startsWith(`${CN_PROVIDER}/`)) {
+    provider = CN_PROVIDER
+    model = model.slice(CN_PROVIDER.length + 1)
+  } else if (model.startsWith(`${GLOBAL_PROVIDER}/`)) {
+    provider = GLOBAL_PROVIDER
+    model = model.slice(GLOBAL_PROVIDER.length + 1)
+  } else {
+    provider = await createCatalogResolver(llm)(model, cfg.defaultRegion)
+  }
+  if (!model) return openAiError(res, 400, 'empty model id')
+
+  const live = new Set((llm.listProviders?.() ?? []).map((p) => p?.id))
+  if (!live.has(provider)) {
+    return openAiError(
+      res,
+      503,
+      `WorkBuddy provider "${provider}" is not registered. Enable and sign in to dsh-connect-workbuddy.`,
+      'provider_unavailable',
+    )
+  }
+
+  let options
+  try {
+    options = await buildGenerateOptions(body, provider, model, attachments)
+  } catch (error) {
+    return openAiError(res, 400, error instanceof Error ? error.message : String(error), 'invalid_image_input')
+  }
+  const streamWanted = body.stream === true
+  const controller = new AbortController()
+  options.signal = controller.signal
+  if (req.on) req.on('close', () => controller.abort())
+
+  const stops = parseStop(body)
+  if (streamWanted) await handleStream(req, res, llm, options, provider, model, stops)
+  else await handleOnce(res, llm, options, provider, model, stops)
 }
 
 async function handleOnce(res, llm, options, provider, model, stops) {
