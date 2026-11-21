@@ -121,3 +121,5 @@ resp = client.chat.completions.create(
 - `locale/zh.json`、`locale/en.json` — 插件显示名称与描述。
 - `icon.svg` — 插件图标。
 - `README.md` — 本文档。
+
+源码目录由后台自动同步监控：任何文件变更都会在数秒内自动重新打包并推送到 Git 仓库的 `main` 分支。
