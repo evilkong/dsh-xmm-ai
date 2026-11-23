@@ -123,3 +123,5 @@ resp = client.chat.completions.create(
 - `README.md` — 本文档。
 
 源码目录由后台自动同步监控：任何文件变更都会在数秒内自动重新打包并推送到 Git 仓库的 `main` 分支。
+
+源码与自动同步脚本位于默认工作区 `D:\dsh\default`。
