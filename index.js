@@ -937,7 +937,11 @@ async function handleStream(req, res, llm, options, provider, model, stops) {
   const created = Math.floor(Date.now() / 1000)
   const send = (payload) => {
     if (res.writableEnded) return
-    res.write(`data: ${JSON.stringify(payload)}\n\n`)
+    // The OpenAI SSE protocol terminates with the literal token `data: [DONE]`,
+    // not a JSON string. Sending JSON.stringify('[DONE]') yields `data: "[DONE]"`
+    // which strict SDKs do not recognise as the end-of-stream sentinel.
+    const data = payload === '[DONE]' ? '[DONE]' : JSON.stringify(payload)
+    res.write(`data: ${data}\n\n`)
   }
   const sendDelta = (delta, finishReason = null, usage) => {
     send({
