@@ -683,8 +683,14 @@ export function apply(ctx, config) {
           if (key === 'allowRemote' && typeof value !== 'boolean') {
             return json(res, 400, { error: 'allowRemote must be a boolean' })
           }
-          if (key === 'defaultRegion' && value !== 'cn' && value !== 'global') {
-            return json(res, 400, { error: 'defaultRegion must be cn or global' })
+          if (key === 'defaultModel') {
+            if (typeof value !== 'string') return json(res, 400, { error: 'defaultModel must be a string' })
+            try {
+              patch[key] = normalizeDefaultModel(value, { strict: true })
+            } catch (error) {
+              return json(res, 400, { error: error instanceof Error ? error.message : String(error) })
+            }
+            continue
           }
           if (key === 'apiPath' && normalizeApiPath(value) !== (typeof value === 'string' ? value.trim() : value)) {
             return json(res, 400, { error: 'apiPath must be a plain path such as /v1 (letters, digits and - _ . / only)' })
