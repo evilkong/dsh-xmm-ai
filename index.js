@@ -439,7 +439,7 @@ function contentToText(content) {
 /**
  * Parse OpenAI `stop` into a list, and apply it to generated text.
  *
- * The WorkBuddy pi-ai adapter rejects `GenerateOptions.stop`, so the field is
+ * The pi-ai adapters reject `GenerateOptions.stop`, so the field is
  * honoured here: text is cut at the first sequence and the finish reason is
  * still `stop`, which is what an OpenAI client expects.
  */

@@ -508,10 +508,25 @@ window.__ModuleLoader__.load({
       // --- form fields ------------------------------------------------------
       const enabledInput = el('input', { type: 'checkbox', style: DLG.check, id: 'xmm-dlg-enabled' })
       const pathInput = el('input', { type: 'text', style: DLG.input, id: 'xmm-dlg-path', value: '/v1' })
-      const regionSelect = el('select', { style: DLG.select, id: 'xmm-dlg-region' }, [
-        el('option', { value: 'cn' }, ['国内（workbuddy）']),
-        el('option', { value: 'global' }, ['国际（workbuddy-global）']),
-      ])
+      /**
+       * Default model picker.
+       *
+       * A text field plus a `<datalist>` populated by the "refresh" button: the
+       * value may be typed by hand (`qoder/qfmodel`) or picked from the live
+       * catalog, and refreshing never clobbers a hand-typed value.
+       */
+      const modelInput = el('input', {
+        type: 'text',
+        style: DLG.input,
+        id: 'xmm-dlg-model',
+        value: '',
+        placeholder: '例如 qoder/qfmodel；留空则要求客户端必须指定 model',
+        list: 'xmm-dlg-model-options',
+        autocomplete: 'off',
+      })
+      const modelOptions = el('datalist', { id: 'xmm-dlg-model-options' })
+      const refreshModelsBtn = el('button', { style: DLG.button, type: 'button', text: '刷新模型' })
+      const modelStatus = el('span', { style: DLG.hint }, [''])
       const remoteInput = el('input', { type: 'checkbox', style: DLG.check, id: 'xmm-dlg-remote' })
       const portInput = el('input', { type: 'number', min: '0', max: '65535', style: DLG.input, id: 'xmm-dlg-port', value: '0' })
       const sidebarInput = el('input', { type: 'checkbox', style: DLG.check, id: 'xmm-dlg-sidebar' })
@@ -649,9 +664,14 @@ window.__ModuleLoader__.load({
         ]),
 
         el('div', { style: DLG.row }, [
-          el('label', { style: DLG.label, for: 'xmm-dlg-region' }, ['默认区域']),
-          regionSelect,
-          el('div', { style: DLG.hint }, ['模型 id 没有 workbuddy/ 或 workbuddy-global/ 前缀时使用。']),
+          el('label', { style: DLG.label, for: 'xmm-dlg-model' }, ['默认模型']),
+          el('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap' }, [
+            modelInput,
+            refreshModelsBtn,
+            modelStatus,
+          ]),
+          modelOptions,
+          el('div', { style: DLG.hint }, ['请求未指定 model 或填 default 时使用该模型。点「刷新模型」从当前已启用的 dsh-connect-* 插件读取可用模型。']),
         ]),
 
         el('div', { style: DLG.checkRow }, [
