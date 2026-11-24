@@ -36,7 +36,7 @@
 | 启用接口 | 关闭后所有 API 路由返回 503，配置页仍可访问。 |
 | 路径前缀 | OpenAI 路由前缀，默认 `/v1`；其后自动接 `/models` 与 `/chat/completions`。改前缀不影响旧路径。 |
 | API Key 列表 | 可自由增减多行，每行一个 Key，并可为每个 Key 填写备注（如「手机」「服务器 A」）。每个 Key 都能用 `Authorization: Bearer <key>` 调用。全部留空表示不鉴权。支持「＋添加 Key」「🎲生成」随机 Key 和「✕删除」单行。 |
-| 默认区域 | `cn`（国内）或 `global`（国际），用于未加区域前缀的模型 id。 |
+| 默认模型 | 请求未指定 `model` 或填 `default` 时使用。点「刷新模型」从已启用的 `dsh-connect-*` 插件读取可用模型，形如 `qoder/qfmodel`。留空则要求客户端必须显式指定 `model`。 |
 | 允许远程客户端 | 默认关闭（仅本机回环访问）。开启后接受来自网络的请求，请只在可信网络启用。 |
 | 固定端口 | 填一个端口（如 `18080`）让插件另外监听该端口，接口地址固定不变；填 `0` 则关闭，使用宿主端口。 |
 | 在左侧菜单显示入口 | 关闭后左侧菜单不再显示本插件入口；设置入口和固定端口接口不受影响。保存后即时生效。 |
@@ -67,7 +67,15 @@ DSH 桌面版启动时硬编码传 `--port 0`，所以宿主 Web 服务每次启
   `stream: true` 返回 `text/event-stream`，以 `data: [DONE]` 结束。
 - `GET /plugins/dsh-xmm-ai/health` — 健康检查与可用 provider。
 
-模型 id 默认按「配置区域优先、另一个区域兜底」解析；想指定区域可用 `workbuddy/<模型id>`（国内）或 `workbuddy-global/<模型id>`（国际）。
+模型解析规则：
+
+| 请求里的 `model` | 行为 |
+|---|---|
+| 省略 / 空串 / `default` | 使用配置页的**默认模型** |
+| `qoder/qfmodel` 这类 `provider/model` | 按前缀直接路由到该 provider |
+| 裸 id（如 `qfmodel`） | 在当前已启用的 provider 目录里查找归属；多家都有时优先默认模型所属的那家 |
+
+`/models` 会额外返回一个 `id: "default"` 的虚拟条目，指向当前配置的默认模型，便于客户端直接填 `default`。
 
 ## 用 OpenAI SDK 调用
 
@@ -81,8 +89,9 @@ client = OpenAI(
     api_key="xmm-workbuddy-local",  # 与配置页里的某个 Key 一致
 )
 
+# 不传 model 也行：会用配置页里的默认模型
 resp = client.chat.completions.create(
-    model="hy4flash-free",
+    model="default",
     messages=[{"role": "user", "content": "你好"}],
 )
 print(resp.choices[0].message.content)
