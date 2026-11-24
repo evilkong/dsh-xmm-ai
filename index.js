@@ -42,6 +42,7 @@ const BASE = '/plugins/dsh-xmm-ai'
 const CONFIG_PATH = `${BASE}/__config`
 const SAVE_PATH = `${BASE}/__save`
 const STATUS_PATH = `${BASE}/__status`
+const MODELS_PATH = `${BASE}/__models`
 const DIAG_PATH = `${BASE}/__diag`
 
 /**
