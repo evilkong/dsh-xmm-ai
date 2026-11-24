@@ -126,4 +126,4 @@ resp = client.chat.completions.create(
 
 源码与自动同步脚本位于默认工作区 `D:\dsh\default`。
 
-> 项目自 2026-11-25 起由 dsh-xmm-workbuddy 改名为 dsh-xmm-ai；Git 远端仓库路径仍为 dsh-xmm-workbuddy.git。
+> 项目自 2026-11-25 起由 dsh-xmm-workbuddy 改名为 dsh-xmm-ai，Git 远端仓库路径也已改为 dsh-xmm-ai.git。
