@@ -714,7 +714,7 @@ window.__ModuleLoader__.load({
         if (parsed.length === 0) makeKeyRow('', '')
         else for (const item of parsed) makeKeyRow(item.key, item.note)
         refreshKeyCount()
-        regionSelect.value = cfg.defaultRegion === 'global' ? 'global' : 'cn'
+        modelInput.value = typeof cfg.defaultModel === 'string' ? cfg.defaultModel : ''
         remoteInput.checked = cfg.allowRemote === true
         portInput.value = String(Number(cfg.fixedPort) || 0)
         sidebarInput.checked = cfg.showSidebar !== false
@@ -780,7 +780,7 @@ window.__ModuleLoader__.load({
             enabled: enabledInput.checked,
             apiPath: pathInput.value,
             apiKeys: serialiseKeys(),
-            defaultRegion: regionSelect.value,
+            defaultModel: modelInput.value.trim(),
             allowRemote: remoteInput.checked,
             fixedPort: Math.max(0, Math.min(65535, Number(portInput.value) || 0)),
             showSidebar: sidebarInput.checked,
