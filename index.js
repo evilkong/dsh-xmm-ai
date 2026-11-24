@@ -214,7 +214,13 @@ async function readBody(req, maxBytes = 8 * 1024 * 1024) {
   })
 }
 
-/** Short-lived catalog used to decide which region owns a model id. */
+/**
+ * Short-lived catalog used to decide which provider owns a bare model id.
+ *
+ * The snapshot is cached briefly because a single chat request may need it
+ * once, and bursts from a client would otherwise re-list every provider on
+ * every message.
+ */
 function createCatalogResolver(llm) {
   let cache
   let cachedAt = 0
@@ -223,7 +229,9 @@ function createCatalogResolver(llm) {
     const now = Date.now()
     if (cache !== undefined && now - cachedAt < TTL_MS) return cache
     const byModel = new Map()
+    const live = new Set((llm.listProviders?.() ?? []).map((p) => p?.id))
     for (const provider of PROVIDERS) {
+      if (!live.has(provider)) continue
       let models
       try {
         models = await llm.listModels(provider)
@@ -231,7 +239,7 @@ function createCatalogResolver(llm) {
         models = []
       }
       for (const model of models ?? []) {
-        if (typeof model?.id !== 'string') continue
+        if (typeof model?.id !== 'string' || !model.id) continue
         const list = byModel.get(model.id) ?? []
         list.push(provider)
         byModel.set(model.id, list)
@@ -241,15 +249,29 @@ function createCatalogResolver(llm) {
     cachedAt = now
     return cache
   }
-  return async function resolve(modelId, defaultRegion) {
-    const primary = defaultRegion === 'global' ? GLOBAL_PROVIDER : CN_PROVIDER
-    const secondary = primary === CN_PROVIDER ? GLOBAL_PROVIDER : CN_PROVIDER
+  /**
+   * Resolve a bare id to one of `PROVIDERS`.
+   *
+   * `preferred` is the provider of the configured default model: when two
+   * providers both publish the same id, the caller almost certainly means the
+   * family they already chose. Returns `undefined` for an id nothing lists — the
+   * caller turns that into an actionable error instead of guessing.
+   */
+  async function resolve(modelId, preferred) {
     const owners = (await snapshot()).get(modelId)
-    if (owners?.includes(primary)) return primary
-    if (owners?.includes(secondary)) return secondary
-    // Unlisted but core routing accepts it; follow the configured default.
-    return primary
+    if (!owners || owners.length === 0) return undefined
+    if (owners.length === 1) return owners[0]
+    if (preferred && owners.includes(preferred)) return preferred
+    return owners[0]
   }
+  /** True when the id is published by `provider` right now. */
+  async function has(provider, modelId) {
+    const owners = (await snapshot()).get(modelId)
+    return Array.isArray(owners) && owners.includes(provider)
+  }
+  resolve.has = has
+  resolve.reset = () => { cache = undefined; cachedAt = 0 }
+  return resolve
 }
 
 /**
