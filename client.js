@@ -311,7 +311,7 @@ window.__ModuleLoader__.load({
       return 'xmm-' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
     }
 
-    const BLANK_DRAFT = { enabled: true, apiPath: '/v1', apiKeys: '', defaultRegion: 'cn', allowRemote: false, fixedPort: 0, showSidebar: true }
+    const BLANK_DRAFT = { enabled: true, apiPath: '/v1', apiKeys: '', defaultModel: '', allowRemote: false, fixedPort: 0, showSidebar: true }
 
     /** Notify the host page that the sidebar-entry preference changed. */
     function notifySidebarChange(show) {
@@ -771,6 +771,46 @@ window.__ModuleLoader__.load({
 
       pathInput.addEventListener('input', refreshUrls)
       portInput.addEventListener('input', refreshUrls)
+
+      /**
+       * Fill the `<datalist>` from the live catalogs.
+       *
+       * Deliberately non-destructive: the typed value is left alone, so a user
+       * who already knows the id they want is never overridden by a refresh.
+       */
+      const refreshModels = async () => {
+        refreshModelsBtn.disabled = true
+        modelStatus.textContent = '读取中…'
+        modelStatus.style.color = ''
+        try {
+          const response = await fetch(MODELS_PATH, { headers: { accept: 'application/json' } })
+          const data = await response.json().catch(() => ({}))
+          if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`)
+          const options = Array.isArray(data.options) ? data.options : []
+          modelOptions.textContent = ''
+          for (const option of options) {
+            modelOptions.appendChild(el('option', { value: option.value, label: option.value }))
+          }
+          const groups = Array.isArray(data.groups) ? data.groups : []
+          if (options.length === 0) {
+            modelStatus.textContent = '没有可用模型，请先在 dsh-connect-* 插件里登录'
+            modelStatus.style.color = '#b45309'
+          } else {
+            const summary = groups.map((g) => `${g.provider} ${g.count}`).join(' · ')
+            modelStatus.textContent = `${options.length} 个（${summary}）`
+            modelStatus.style.color = ''
+          }
+          report('dialog-models-refreshed', String(options.length))
+        } catch (error) {
+          modelStatus.textContent = `读取失败：${error && error.message ? error.message : error}`
+          modelStatus.style.color = '#b91c1c'
+          report('dialog-models-failed', String(error && error.message ? error.message : error))
+        } finally {
+          refreshModelsBtn.disabled = false
+        }
+      }
+
+      refreshModelsBtn.addEventListener('click', () => { refreshModels() })
 
       saveBtn.addEventListener('click', async () => {
         saveBtn.disabled = true
