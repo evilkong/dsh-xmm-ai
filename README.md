@@ -49,7 +49,7 @@
 
 DSH 桌面版启动时硬编码传 `--port 0`，所以宿主 Web 服务每次启动都会随机换端口，而且命令行参数优先于 profile 配置——无法从配置层面固定它。
 
-为此插件提供**固定端口**选项：设置一个端口号后，插件会自己用 Node 的 `http` 模块在该端口上监听，直接提供 OpenAI 接口。它复用宿主的 LLM 服务（`ctx.llm`）与附件服务（`ctx.attachments`），所以仍然走 WorkBuddy 已登录账号、积分池和模型目录，行为与宿主路由上的接口完全一致。
+为此插件提供**固定端口**选项：设置一个端口号后，插件会自己用 Node 的 `http` 模块在该端口上监听，直接提供 OpenAI 接口。它复用宿主的 LLM 服务（`ctx.llm`）与附件服务（`ctx.attachments`），所以仍然走已登录账号、积分池和模型目录，行为与宿主路由上的接口完全一致。
 
 - 固定端口服务的路径是 `<前缀>/models`、`<前缀>/chat/completions` 和 `/health`，例如 `http://127.0.0.1:18080/v1/models`。
 - 设置固定端口后，配置页顶部的「接口地址」会立即显示为这个固定地址。
@@ -126,8 +126,8 @@ resp = client.chat.completions.create(
 
 ## 文件组成
 
-- `index.js` — 宿主端：OpenAI 路由、配置读写、图片接入。
-- `client.js` — 浏览器端：左侧菜单入口与配置页。
+- `index.js` — 宿主端：OpenAI 路由、配置读写、默认模型解析、图片接入。
+- `client.js` — 浏览器端：左侧菜单入口、设置分区与配置页（含默认模型选择）。
 - `cordis.patch.yml` — DSH Loader 插入行。
 - `locale/zh.json`、`locale/en.json` — 插件显示名称与描述。
 - `icon.svg` — 插件图标。
