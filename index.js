@@ -1,5 +1,5 @@
 /**
- * dsh-xmm-workbuddy
+ * dsh-xmm-ai
  *
  * An OpenAI-compatible HTTP API backed by the WorkBuddy models that
  * `dsh-connect-workbuddy` registers in DeepSeek Harness. This plugin does not
@@ -24,7 +24,7 @@ const CN_PROVIDER = 'workbuddy'
 const GLOBAL_PROVIDER = 'workbuddy-global'
 const PROVIDERS = [CN_PROVIDER, GLOBAL_PROVIDER]
 /** Fixed prefix this bundle's host rows live under; every route path is derived from it. */
-const BASE = '/plugins/dsh-xmm-workbuddy'
+const BASE = '/plugins/dsh-xmm-ai'
 const CONFIG_PATH = `${BASE}/__config`
 const SAVE_PATH = `${BASE}/__save`
 const STATUS_PATH = `${BASE}/__status`
@@ -427,7 +427,7 @@ function checkAccess(req, res, config) {
     return false
   }
   if (!authorized(req, config)) {
-    res.setHeader('WWW-Authenticate', 'Bearer realm="dsh-xmm-workbuddy"')
+    res.setHeader('WWW-Authenticate', 'Bearer realm="dsh-xmm-ai"')
     openAiError(res, 401, 'invalid or missing API key', 'invalid_api_key')
     return false
   }
@@ -459,7 +459,7 @@ function startFixedServer(ctx, currentConfig, getServices) {
         // Health is a fixed path, independent of the configurable prefix.
         if (path === '/health') {
           const providers = (services.llm?.listProviders?.() ?? []).map((p) => p?.id).filter((id) => PROVIDERS.includes(id))
-          return json(res, 200, { status: 'ok', service: 'dsh-xmm-workbuddy', providers })
+          return json(res, 200, { status: 'ok', service: 'dsh-xmm-ai', providers })
         }
 
         // Accept both the bare prefix and the full plugin path for convenience.
@@ -487,7 +487,7 @@ function startFixedServer(ctx, currentConfig, getServices) {
     })
 
     server.on('error', (error) => {
-      ctx.logger?.warn?.(`dsh-xmm-workbuddy: fixed port ${port} failed: ${error.message}`)
+      ctx.logger?.warn?.(`dsh-xmm-ai: fixed port ${port} failed: ${error.message}`)
     })
     // Bind all interfaces when remote clients are allowed; otherwise loopback.
     // Binding is fixed at listen time, so changing `allowRemote` re-registers
@@ -495,7 +495,7 @@ function startFixedServer(ctx, currentConfig, getServices) {
     const bindHost = initial.allowRemote ? '0.0.0.0' : '127.0.0.1'
     server.listen(port, bindHost, () => { started = true })
   } catch (error) {
-    ctx.logger?.warn?.(`dsh-xmm-workbuddy: could not start fixed server: ${error.message}`)
+    ctx.logger?.warn?.(`dsh-xmm-ai: could not start fixed server: ${error.message}`)
     return () => {}
   }
 
@@ -571,7 +571,7 @@ export function apply(ctx, config) {
         }
         json(res, 200, {
           config: currentConfig(),
-          namespace: ctx.fiber?.entry?.options?.id ?? 'dsh-xmm-workbuddy',
+          namespace: ctx.fiber?.entry?.options?.id ?? 'dsh-xmm-ai',
         })
       },
     })
@@ -697,7 +697,7 @@ export function apply(ctx, config) {
             .map((p) => p?.id)
             .filter((id) => PROVIDERS.includes(id))
         } catch { /* host not ready */ }
-        json(res, 200, { status: 'ok', service: 'dsh-xmm-workbuddy', providers })
+        json(res, 200, { status: 'ok', service: 'dsh-xmm-ai', providers })
       },
     })
 

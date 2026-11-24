@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "dsh-xmm-workbuddy",
-    "description": "把 dsh-connect-workbuddy 接入的 WorkBuddy 模型以 OpenAI 兼容 HTTP 接口对外开放，地址为 /plugins/dsh-xmm-workbuddy/v1（GET /v1/models 与 POST /v1/chat/completions，支持流式）。请求经 Harness LLM 服务转发，复用同一套登录账号、积分与模型目录。左侧菜单新增入口，点开可配置 API Key、默认区域与远程访问，保存后立即生效。"
+    "title": "dsh-xmm-ai",
+    "description": "把 dsh-connect-workbuddy 接入的 WorkBuddy 模型以 OpenAI 兼容 HTTP 接口对外开放，地址为 /plugins/dsh-xmm-ai/v1（GET /v1/models 与 POST /v1/chat/completions，支持流式）。请求经 Harness LLM 服务转发，复用同一套登录账号、积分与模型目录。左侧菜单新增入口，点开可配置 API Key、默认区域与远程访问，保存后立即生效。"
   }
 }

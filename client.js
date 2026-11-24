@@ -1,5 +1,5 @@
 /**
- * dsh-xmm-workbuddy — browser half.
+ * dsh-xmm-ai — browser half.
  *
  * Registers one sidebar entry and the full configuration page behind it. The
  * page is registered into the keyed `main` slot under the same id the sidebar
@@ -12,7 +12,7 @@
  *   - a class error boundary keeps a later failure visible instead of blank.
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-xmm-workbuddy',
+  id: 'dsh-xmm-ai',
   factory(require) {
     const React = require('react')
     const h = React.createElement
@@ -20,12 +20,12 @@ window.__ModuleLoader__.load({
     const useEffect = React.useEffect
     const useCallback = React.useCallback
 
-    const NAMESPACE = 'settings.dsh-xmm-workbuddy'
-    const PANEL_ID = 'dsh-xmm-workbuddy'
-    const CONFIG_PATH = '/plugins/dsh-xmm-workbuddy/__config'
-    const SAVE_PATH = '/plugins/dsh-xmm-workbuddy/__save'
-    const STATUS_PATH = '/plugins/dsh-xmm-workbuddy/__status'
-    const DIAG_PATH = '/plugins/dsh-xmm-workbuddy/__diag'
+    const NAMESPACE = 'settings.dsh-xmm-ai'
+    const PANEL_ID = 'dsh-xmm-ai'
+    const CONFIG_PATH = '/plugins/dsh-xmm-ai/__config'
+    const SAVE_PATH = '/plugins/dsh-xmm-ai/__save'
+    const STATUS_PATH = '/plugins/dsh-xmm-ai/__status'
+    const DIAG_PATH = '/plugins/dsh-xmm-ai/__diag'
 
     /**
      * Report one breadcrumb to the host half.
@@ -72,9 +72,9 @@ window.__ModuleLoader__.load({
 
     const copy = {
       en: {
-        'nav.label': '小咪OpenAI兼容接口',
-        'page.title': '小咪OpenAI兼容接口',
-        'page.subtitle': '配置由插件dsh-connect-workbuddy提供服务的 OpenAI 兼容接口',
+        'nav.label': '小咪AI兼容接口',
+        'page.title': '小咪AI兼容接口',
+        'page.subtitle': '配置由dsh系列插件提供服务的 OpenAI 兼容接口',
         'page.back': 'Back to chat',
         'server.title': 'How to call it',
         'server.port': 'Listening port',
@@ -111,9 +111,9 @@ window.__ModuleLoader__.load({
         'status.crashed': 'This page failed to render: {error}',
       },
       zh: {
-        'nav.label': '小咪OpenAI兼容接口',
-        'page.title': '小咪OpenAI兼容接口',
-        'page.subtitle': '配置由插件dsh-connect-workbuddy提供服务的 OpenAI 兼容接口',
+        'nav.label': '小咪AI兼容接口',
+        'page.title': '小咪AI兼容接口',
+        'page.subtitle': '配置由dsh系列插件提供服务的 OpenAI 兼容接口',
         'page.back': '返回对话',
         'server.title': '调用方式',
         'server.port': '监听端口',
@@ -316,7 +316,7 @@ window.__ModuleLoader__.load({
     /** Notify the host page that the sidebar-entry preference changed. */
     function notifySidebarChange(show) {
       try {
-        globalThis.dispatchEvent?.(new CustomEvent('xmm-workbuddy-sidebar-change', { detail: { show } }))
+        globalThis.dispatchEvent?.(new CustomEvent('xmm-ai-sidebar-change', { detail: { show } }))
       } catch { /* best effort */ }
       try {
         if (globalThis.__xmmWorkbuddySidebarChanged) globalThis.__xmmWorkbuddySidebarChanged(show)
@@ -384,9 +384,9 @@ window.__ModuleLoader__.load({
       return h('div', { style: styles.root },
         h('div', { style: styles.header },
           h(Icon, { size: 28 }),
-          h('h1', { style: styles.h1 }, '小咪OpenAI兼容接口'),
+          h('h1', { style: styles.h1 }, '小咪AI兼容接口'),
         ),
-        h('div', { style: styles.subtitle }, '配置由插件dsh-connect-workbuddy提供服务的 OpenAI 兼容接口'),
+        h('div', { style: styles.subtitle }, '配置由dsh系列插件提供服务的 OpenAI 兼容接口'),
         h('div', {
           id: PANEL_HOST_ID,
           ref: mainPanelRef,
@@ -717,7 +717,7 @@ window.__ModuleLoader__.load({
         const port = Number(portInput.value) || 0
         const base = port > 0
           ? `http://127.0.0.1:${port}${prefix}`
-          : `${origin}/plugins/dsh-xmm-workbuddy${prefix}`
+          : `${origin}/plugins/dsh-xmm-ai${prefix}`
         baseUrlLine.textContent = base
         modelsLine.textContent = `${base}/models`
         chatLine.textContent = `${base}/chat/completions`
@@ -864,7 +864,7 @@ window.__ModuleLoader__.load({
           }
         }, `${PANEL_ID}: copy`)
       } catch (error) {
-        console.error('[dsh-xmm-workbuddy] locale registration failed (labels fall back to built-in copy):', error)
+        console.error('[dsh-xmm-ai] locale registration failed (labels fall back to built-in copy):', error)
       }
 
       /** Ask the host to select this plugin's panel; soft, so a bare host still renders. */
@@ -873,7 +873,7 @@ window.__ModuleLoader__.load({
           const layout = ctx.get ? ctx.get('layout') : undefined
           if (layout && typeof layout.selectPanel === 'function') layout.selectPanel(PANEL_ID)
         } catch (error) {
-          console.error('[dsh-xmm-workbuddy] could not select the panel:', error)
+          console.error('[dsh-xmm-ai] could not select the panel:', error)
         }
       }
 
@@ -895,7 +895,7 @@ window.__ModuleLoader__.load({
         report('main-registered', `key=${PANEL_ID}`)
       } catch (error) {
         report('main-register-failed', error && error.message ? error.message : String(error))
-        console.error('[dsh-xmm-workbuddy] main panel registration failed:', error)
+        console.error('[dsh-xmm-ai] main panel registration failed:', error)
       }
 
       /**
@@ -930,7 +930,7 @@ window.__ModuleLoader__.load({
           report('sidebar-row-registered', '')
         } catch (error) {
           report('sidebar-register-failed', error && error.message ? error.message : String(error))
-          console.error('[dsh-xmm-workbuddy] sidebar entry registration failed:', error)
+          console.error('[dsh-xmm-ai] sidebar entry registration failed:', error)
         }
       }
 
@@ -945,7 +945,7 @@ window.__ModuleLoader__.load({
 
       // Immediate feedback when the form saves a new value.
       try {
-        globalThis.addEventListener?.('xmm-workbuddy-sidebar-change', (event) => {
+        globalThis.addEventListener?.('xmm-ai-sidebar-change', (event) => {
           const show = event && event.detail && typeof event.detail.show === 'boolean' ? event.detail.show : true
           syncSidebarRow(show)
         })
@@ -984,7 +984,7 @@ window.__ModuleLoader__.load({
         })
       } catch (error) {
         report('settings-register-failed', error && error.message ? error.message : String(error))
-        console.error('[dsh-xmm-workbuddy] settings entry registration failed:', error)
+        console.error('[dsh-xmm-ai] settings entry registration failed:', error)
       }
 
       return { openPanel }

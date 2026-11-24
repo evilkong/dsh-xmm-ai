@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "dsh-xmm-workbuddy",
-    "description": "Exposes the WorkBuddy models connected by dsh-connect-workbuddy through an OpenAI-compatible HTTP API at /plugins/dsh-xmm-workbuddy/v1 (GET /v1/models and POST /v1/chat/completions, with streaming). Requests run through the Harness LLM service, reusing the signed-in accounts, credits and model roster. A sidebar entry opens a page for editing the API key, default region and remote-access settings; changes take effect immediately."
+    "title": "dsh-xmm-ai",
+    "description": "Exposes the WorkBuddy models connected by dsh-connect-workbuddy through an OpenAI-compatible HTTP API at /plugins/dsh-xmm-ai/v1 (GET /v1/models and POST /v1/chat/completions, with streaming). Requests run through the Harness LLM service, reusing the signed-in accounts, credits and model roster. A sidebar entry opens a page for editing the API key, default region and remote-access settings; changes take effect immediately."
   }
 }

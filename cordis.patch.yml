@@ -1,6 +1,6 @@
 - insert:
-    - id: dsh-xmm-workbuddy
-      name: dsh-xmm-workbuddy
+    - id: dsh-xmm-ai
+      name: dsh-xmm-ai
       config:
         enabled: true
         apiPath: /v1

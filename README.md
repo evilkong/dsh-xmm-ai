@@ -1,4 +1,4 @@
-# dsh-xmm-workbuddy
+# dsh-xmm-ai
 
 把 DeepSeek Harness 中由 `dsh-connect-workbuddy` 接入的 WorkBuddy 模型，对外开放成 **OpenAI 兼容的 HTTP 接口**，并在 DSH 左侧菜单提供一个可视化配置页。
 
@@ -23,8 +23,8 @@
 
 配置页有两个入口，内容完全相同：
 
-1. **左侧菜单**：**小咪OpenAI兼容接口**，点击后在主区域直接显示配置表单。
-2. **设置 → 小咪OpenAI兼容接口**：在 DSH 设置里也有独立分区入口，同样打开这份配置表单。
+1. **左侧菜单**：**小咪AI兼容接口**，点击后在主区域直接显示配置表单。
+2. **设置 → 小咪AI兼容接口**：在 DSH 设置里也有独立分区入口，同样打开这份配置表单。
 
 两个入口都无需弹窗、无需额外点击：
 
@@ -39,7 +39,7 @@
 | 固定端口 | 填一个端口（如 `18080`）让插件另外监听该端口，接口地址固定不变；填 `0` 则关闭，使用宿主端口。 |
 | 在左侧菜单显示入口 | 关闭后左侧菜单不再显示本插件入口；设置入口和固定端口接口不受影响。保存后即时生效。 |
 
-配置页标题下方的说明为：**配置由插件dsh-connect-workbuddy提供服务的 OpenAI 兼容接口**。
+配置页标题下方的说明为：**配置由dsh系列插件提供服务的 OpenAI 兼容接口**。
 
 配置通过 Harness 的配置编辑器保存，立即生效（固定端口需要重启应用后监听）。左侧菜单开关通过「注册/撤销菜单行」实现，是持久化的；DSH 自带的图钉 pin 是纯内存、重启即失效，不使用它作为开关。
 
@@ -59,23 +59,23 @@ DSH 桌面版启动时硬编码传 `--port 0`，所以宿主 Web 服务每次启
 
 以当前宿主地址（配置页显示，例如 `http://127.0.0.1:60369`）为基准：
 
-- `GET /plugins/dsh-xmm-workbuddy/<前缀>/models` — OpenAI 风格模型列表（`{"object":"list","data":[...]}`）。
-- `POST /plugins/dsh-xmm-workbuddy/<前缀>/chat/completions` — 聊天补全。
+- `GET /plugins/dsh-xmm-ai/<前缀>/models` — OpenAI 风格模型列表（`{"object":"list","data":[...]}`）。
+- `POST /plugins/dsh-xmm-ai/<前缀>/chat/completions` — 聊天补全。
   支持 `model`、`messages`、`stream`、`temperature`、`max_tokens` / `max_completion_tokens`、`stop`、`reasoning_effort`、`tools`。
   `stream: true` 返回 `text/event-stream`，以 `data: [DONE]` 结束。
-- `GET /plugins/dsh-xmm-workbuddy/health` — 健康检查与可用 provider。
+- `GET /plugins/dsh-xmm-ai/health` — 健康检查与可用 provider。
 
 模型 id 默认按「配置区域优先、另一个区域兜底」解析；想指定区域可用 `workbuddy/<模型id>`（国内）或 `workbuddy-global/<模型id>`（国际）。
 
 ## 用 OpenAI SDK 调用
 
-把 `base_url` 设到 `<宿主地址>/plugins/dsh-xmm-workbuddy/v1`（注意结尾是 `/v1`，SDK 会自己补 `/models`、`/chat/completions`）：
+把 `base_url` 设到 `<宿主地址>/plugins/dsh-xmm-ai/v1`（注意结尾是 `/v1`，SDK 会自己补 `/models`、`/chat/completions`）：
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="http://127.0.0.1:60369/plugins/dsh-xmm-workbuddy/v1",
+    base_url="http://127.0.0.1:60369/plugins/dsh-xmm-ai/v1",
     api_key="xmm-workbuddy-local",  # 与配置页里的某个 Key 一致
 )
 
@@ -125,3 +125,5 @@ resp = client.chat.completions.create(
 源码目录由后台自动同步监控：任何文件变更都会在数秒内自动重新打包并推送到 Git 仓库的 `main` 分支。
 
 源码与自动同步脚本位于默认工作区 `D:\dsh\default`。
+
+> 项目自 2026-11-25 起由 dsh-xmm-workbuddy 改名为 dsh-xmm-ai；Git 远端仓库路径仍为 dsh-xmm-workbuddy.git。
