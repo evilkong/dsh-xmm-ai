@@ -767,7 +767,52 @@ export function apply(ctx, config) {
           },
           providers,
           keyCount: keys.length,
+          defaultModel: cfg.defaultModel,
         })
+      },
+    })
+
+    /**
+     * Catalog for the settings page's "refresh models" button.
+     *
+     * Loopback-only and unauthenticated like the other `__` routes: it exposes
+     * the model roster of this machine's own profile, nothing secret. The
+     * response is a flat list of `provider/model` refs so the page can put them
+     * straight into a `<datalist>`.
+     */
+    route({
+      kind: 'exact',
+      path: MODELS_PATH,
+      handler: async (req, res) => {
+        if (req.method !== 'GET') {
+          res.setHeader('Allow', 'GET')
+          return json(res, 405, { error: 'method not allowed' })
+        }
+        if (!isLoopback(req.socket?.remoteAddress)) {
+          return json(res, 403, { error: 'loopback access only' })
+        }
+        const llm = webCtx.llm ?? ctx.get?.('llm')
+        if (!llm) return json(res, 503, { error: 'the LLM service is not available yet' })
+        const live = new Set((llm.listProviders?.() ?? []).map((p) => p?.id))
+        const groups = []
+        const options = []
+        for (const provider of PROVIDERS) {
+          if (!live.has(provider)) continue
+          let models
+          try {
+            models = await llm.listModels(provider)
+          } catch {
+            models = []
+          }
+          const ids = []
+          for (const model of models ?? []) {
+            if (typeof model?.id !== 'string' || !model.id) continue
+            ids.push(model.id)
+            options.push({ value: `${provider}/${model.id}`, label: `${model.id} · ${provider}`, provider })
+          }
+          if (ids.length > 0) groups.push({ provider, count: ids.length })
+        }
+        json(res, 200, { options, groups, defaultModel: currentConfig().defaultModel })
       },
     })
 
