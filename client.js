@@ -91,10 +91,9 @@ window.__ModuleLoader__.load({
         'field.apiKeys': 'API keys',
         'field.apiKeys.hint': 'One key per line (or comma-separated). Each is accepted as Authorization: Bearer <key>. Empty means no authentication. A trailing # note is ignored.',
         'field.apiKeys.count': 'configured: {count}',
-        'field.defaultRegion': 'Default region',
-        'field.defaultRegion.hint': 'Used when a model id has no workbuddy/ or workbuddy-global/ prefix.',
-        'field.region.cn': 'China (workbuddy)',
-        'field.region.global': 'International (workbuddy-global)',
+        'field.defaultModel': 'Default model',
+        'field.defaultModel.hint': 'Used when a request omits model or sends "default". Click "Refresh models" to read what the enabled dsh-connect-* plugins offer.',
+        'field.defaultModel.refresh': 'Refresh models',
         'field.allowRemote': 'Allow remote clients',
         'field.allowRemote.hint': 'Off: loopback only. On: accept clients from the network. Only on a trusted network.',
         'field.fixedPort': 'Fixed port (standalone API)',
@@ -130,10 +129,9 @@ window.__ModuleLoader__.load({
         'field.apiKeys': 'API Key 列表',
         'field.apiKeys.hint': '可自由增减多行：每行一个 Key，并可为每个 Key 填备注。每个 Key 都能用 Authorization: Bearer <key> 调用，留空全部则关闭鉴权。',
         'field.apiKeys.count': '已配置：{count}',
-        'field.defaultRegion': '默认区域',
-        'field.defaultRegion.hint': '模型 id 没有 workbuddy/ 或 workbuddy-global/ 前缀时使用。',
-        'field.region.cn': '国内（workbuddy）',
-        'field.region.global': '国际（workbuddy-global）',
+        'field.defaultModel': '默认模型',
+        'field.defaultModel.hint': '请求未指定 model 或填 default 时使用该模型。点「刷新模型」读取已启用的 dsh-connect-* 插件提供的模型。',
+        'field.defaultModel.refresh': '刷新模型',
         'field.allowRemote': '允许远程客户端',
         'field.allowRemote.hint': '关闭：仅本机访问。开启：接受来自网络的请求。请仅在可信网络开启。',
         'field.fixedPort': '固定端口（独立接口）',
@@ -752,6 +750,8 @@ window.__ModuleLoader__.load({
           const data = await response.json()
           applyConfig(data.config ?? {})
           setStatus('已加载', false)
+          // Populate the picker eagerly so the field is usable without a click.
+          refreshModels()
           report('dialog-loaded', JSON.stringify(Object.keys(data.config ?? {})))
         } catch (error) {
           setStatus(`加载失败：${error && error.message ? error.message : error}`, true)
