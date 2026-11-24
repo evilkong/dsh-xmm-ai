@@ -25,6 +25,7 @@ window.__ModuleLoader__.load({
     const CONFIG_PATH = '/plugins/dsh-xmm-ai/__config'
     const SAVE_PATH = '/plugins/dsh-xmm-ai/__save'
     const STATUS_PATH = '/plugins/dsh-xmm-ai/__status'
+    const MODELS_PATH = '/plugins/dsh-xmm-ai/__models'
     const DIAG_PATH = '/plugins/dsh-xmm-ai/__diag'
 
     /**
