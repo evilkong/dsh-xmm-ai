@@ -1,13 +1,15 @@
 # dsh-xmm-ai
 
-把 DeepSeek Harness 中由 `dsh-connect-workbuddy` 接入的 WorkBuddy 模型，对外开放成 **OpenAI 兼容的 HTTP 接口**，并在 DSH 左侧菜单提供一个可视化配置页。
+把 DeepSeek Harness 中由 **dsh 系列插件**（`dsh-connect-workbuddy`、`dsh-connect-qoder`）接入的模型，对外开放成 **OpenAI 兼容的 HTTP 接口**，并在 DSH 设置里提供一个可视化配置页。
 
-插件本身不直接连接 WorkBuddy：所有请求都通过 Harness 的 LLM 服务（`ctx.llm.stream`）转发，因此复用同一套已登录账号、积分池、模型目录与推理配置。
+插件本身不直接连接上游厂商：所有请求都通过 Harness 的 LLM 服务（`ctx.llm.stream`）转发，因此复用同一套已登录账号、积分池、模型目录与推理配置。
 
 ## 前置条件
 
-- 已安装并启用 `dsh-connect-workbuddy`，且其中至少有一个区域（国内 `workbuddy` 或国际 `workbuddy-global`）已登录并可用。
-- 本插件需要 WorkBuddy 模型：没有注册任何 WorkBuddy provider 时，接口会返回明确错误。
+- 已安装并启用至少一个 `dsh-connect-*` 插件，并已登录可用：
+  - `dsh-connect-workbuddy` —— 国内 `workbuddy` / 国际 `workbuddy-global`
+  - `dsh-connect-qoder` —— 国内 `qoder` / 国际 `qoder-global`
+- 没有任何可用 provider 时，接口会返回明确错误。
 
 ## 安装
 
