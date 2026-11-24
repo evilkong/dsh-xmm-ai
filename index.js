@@ -140,6 +140,9 @@ function parseModelRef(value) {
   }
   return { provider: undefined, model: text }
 }
+
+/**
+ * Parse the multi-key field into usable keys.
  *
  * One key per line; a trailing `# note` and blank lines are ignored, so a user
  * can label which client a key belongs to. Commas also separate, because keys
@@ -166,7 +169,7 @@ function readConfig(config) {
   return {
     enabled: normalizeField('enabled', unwrap(raw.enabled)),
     apiPath: normalizeField('apiPath', unwrap(raw.apiPath)),
-    defaultRegion: normalizeField('defaultRegion', unwrap(raw.defaultRegion)),
+    defaultModel: normalizeField('defaultModel', unwrap(raw.defaultModel)),
     allowRemote: normalizeField('allowRemote', unwrap(raw.allowRemote)),
     apiKeys: normalizeField('apiKeys', unwrap(raw.apiKeys)),
     fixedPort: normalizeField('fixedPort', unwrap(raw.fixedPort)),
