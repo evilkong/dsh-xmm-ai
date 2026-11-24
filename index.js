@@ -1,21 +1,26 @@
 /**
  * dsh-xmm-ai
  *
- * An OpenAI-compatible HTTP API backed by the WorkBuddy models that
- * `dsh-connect-workbuddy` registers in DeepSeek Harness. This plugin does not
- * speak to WorkBuddy itself: every chat request is dispatched through the
- * Harness LLM service (`ctx.llm.stream`), so it reuses the signed-in accounts,
- * credit pool, model roster and reasoning configuration of the host.
+ * An OpenAI-compatible HTTP API backed by the models that the `dsh-connect-*`
+ * plugins register in DeepSeek Harness. This plugin never speaks to an upstream
+ * vendor itself: every chat request is dispatched through the Harness LLM
+ * service (`ctx.llm.stream`), so it reuses the signed-in accounts, credit
+ * pools, model roster and reasoning configuration of the host.
  *
- * Provider routes owned by dsh-connect-workbuddy:
- *   - "workbuddy"         (CN / domestic)
- *   - "workbuddy-global"  (international)
+ * Provider routes this API serves, if the matching plugin is installed:
+ *   - "workbuddy"         (dsh-connect-workbuddy, CN / domestic)
+ *   - "workbuddy-global"  (dsh-connect-workbuddy, international)
+ *   - "qoder"             (dsh-connect-qoder, CN / domestic)
+ *   - "qoder-global"      (dsh-connect-qoder, international)
+ *
+ * A request may name `provider/model`, a bare model id (resolved against the
+ * live catalogs), or nothing at all — in which case the configured default
+ * model answers.
  *
  * The Desktop host passes `--port 0` to its own webserver, so that port changes
  * on every launch. When `fixedPort` is set, this plugin also runs a small
  * standalone `node:http` listener on that exact port, serving the same OpenAI
- * surface. It reuses the host's LLM service through `ctx`, so it still goes
- * through WorkBuddy's signed-in accounts and the shared model catalog.
+ * surface.
  */
 
 import { createServer } from 'node:http'
