@@ -550,7 +550,7 @@ function startFixedServer(ctx, currentConfig, getServices) {
           return json(res, 405, { error: 'method not allowed' })
         }
         if (!checkAccess(req, res, cfg)) return
-        if (isModels) return handleModels(res, services)
+        if (isModels) return handleModels(res, services, cfg)
         return handleChat(req, res, services, cfg, services.attachments)
       } catch (error) {
         if (!res.writableEnded) {
@@ -794,7 +794,7 @@ export function apply(ctx, config) {
         }
         const cfg = currentConfig()
         if (!checkAccess(req, res, cfg)) return
-        if (isModels) return handleModels(res, webCtx)
+        if (isModels) return handleModels(res, webCtx, cfg)
         return handleChat(req, res, webCtx, cfg, ctx.get?.('attachments'))
       },
     })
