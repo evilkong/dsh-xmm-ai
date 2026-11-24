@@ -50,7 +50,7 @@ const DIAG_PATH = `${BASE}/__diag`
 const CONFIG_DEFAULTS = Object.freeze({
   enabled: true,
   apiPath: '/v1',
-  defaultRegion: 'cn',
+  defaultModel: '',
   allowRemote: false,
   apiKeys: '',
   fixedPort: 0,
@@ -75,8 +75,8 @@ function normalizeField(key, value) {
       return value === undefined ? CONFIG_DEFAULTS.enabled : value === true
     case 'apiPath':
       return normalizeApiPath(value)
-    case 'defaultRegion':
-      return value === 'global' ? 'global' : 'cn'
+    case 'defaultModel':
+      return normalizeDefaultModel(value)
     case 'allowRemote':
       return value === true
     case 'apiKeys':
@@ -100,7 +100,46 @@ function normalizeApiPath(value) {
 }
 
 /**
- * Parse the multi-key field into usable keys.
+ * Accept `qoder/qfmodel`, `qfmodel`, or an empty value.
+ *
+ * A bare id is stored as-is: which provider owns it is decided per request from
+ * the live catalogs, so the same setting keeps working if a model moves between
+ * regions. Only obviously bogus input is rejected.
+ */
+function normalizeDefaultModel(value, { strict = false } = {}) {
+  if (value === undefined || value === null) return CONFIG_DEFAULTS.defaultModel
+  if (typeof value !== 'string') return CONFIG_DEFAULTS.defaultModel
+  const text = value.trim()
+  if (text === '') return ''
+  if (!MODEL_REF_PATTERN.test(text) || text.startsWith('/') || text.endsWith('/')) {
+    if (strict) throw new Error('defaultModel must look like "qoder/qfmodel" or "qfmodel"')
+    return CONFIG_DEFAULTS.defaultModel
+  }
+  return text
+}
+
+/** One optional `provider/` prefix followed by a model id, no whitespace. */
+const MODEL_REF_PATTERN = /^[A-Za-z0-9._:-]+(?:\/[A-Za-z0-9._:-]+)?$/
+
+/**
+ * Split a request `model` value into `{ provider, model }`.
+ *
+ * Only the four providers this API serves are treated as prefixes; anything
+ * else stays part of the model id, so a model legitimately named `foo/bar`
+ * survives. `provider` is undefined when the caller did not name one.
+ */
+function parseModelRef(value) {
+  const text = typeof value === 'string' ? value.trim() : ''
+  if (text === '') return { provider: undefined, model: '' }
+  const slash = text.indexOf('/')
+  if (slash > 0) {
+    const head = text.slice(0, slash)
+    if (PROVIDERS.includes(head)) {
+      return { provider: head, model: text.slice(slash + 1) }
+    }
+  }
+  return { provider: undefined, model: text }
+}
  *
  * One key per line; a trailing `# note` and blank lines are ignored, so a user
  * can label which client a key belongs to. Commas also separate, because keys
