@@ -882,9 +882,6 @@ async function handleChat(req, res, webCtxArg, cfg, attachments) {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) {
     return openAiError(res, 400, 'body must be a JSON object')
   }
-  if (typeof body.model !== 'string' || !body.model) {
-    return openAiError(res, 400, 'missing required field: model')
-  }
   if (!Array.isArray(body.messages)) {
     return openAiError(res, 400, 'missing required field: messages (array)')
   }
@@ -892,27 +889,57 @@ async function handleChat(req, res, webCtxArg, cfg, attachments) {
   const llm = webCtxArg.llm
   if (!llm) return openAiError(res, 503, 'Harness LLM service is not available', 'service_unavailable')
 
-  let model = body.model
-  let provider
-  if (model.startsWith(`${CN_PROVIDER}/`)) {
-    provider = CN_PROVIDER
-    model = model.slice(CN_PROVIDER.length + 1)
-  } else if (model.startsWith(`${GLOBAL_PROVIDER}/`)) {
-    provider = GLOBAL_PROVIDER
-    model = model.slice(GLOBAL_PROVIDER.length + 1)
-  } else {
-    provider = await createCatalogResolver(llm)(model, cfg.defaultRegion)
-  }
-  if (!model) return openAiError(res, 400, 'empty model id')
+  const catalog = createCatalogResolver(llm)
 
-  const live = new Set((llm.listProviders?.() ?? []).map((p) => p?.id))
-  if (!live.has(provider)) {
+  /**
+   * Pick the model for this request.
+   *
+   * `model` is optional: an absent value or the literal `default` resolves to
+   * the configured default model, which is what lets a client that cannot
+   * choose a model still work. An explicit `provider/model` always wins, and a
+   * bare id is mapped through the live catalogs.
+   */
+  const requested = typeof body.model === 'string' ? body.model.trim() : ''
+  const wantsDefault = requested === '' || requested === DEFAULT_MODEL_ALIAS
+  if (wantsDefault && !cfg.defaultModel) {
     return openAiError(
       res,
-      503,
-      `WorkBuddy provider "${provider}" is not registered. Enable and sign in to dsh-connect-workbuddy.`,
-      'provider_unavailable',
+      400,
+      'no model given and no default model is configured. Set one in the plugin settings, or pass "model": "<provider>/<model>".',
+      'default_model_missing',
     )
+  }
+
+  const ref = parseModelRef(wantsDefault ? cfg.defaultModel : requested)
+  let model = ref.model
+  let provider = ref.provider
+  if (!model) return openAiError(res, 400, 'empty model id')
+
+  if (provider) {
+    // An explicit prefix is authoritative, but say plainly when that provider
+    // is not live rather than letting the core error out obscurely.
+    const live = new Set((llm.listProviders?.() ?? []).map((p) => p?.id))
+    if (!live.has(provider)) {
+      return openAiError(
+        res,
+        503,
+        `provider "${provider}" is not registered. Enable the matching dsh-connect-* plugin and sign in.`,
+        'provider_unavailable',
+      )
+    }
+  } else {
+    // Prefer the default model's own provider when ids collide across regions.
+    const preferred = cfg.defaultModel ? parseModelRef(cfg.defaultModel).provider : undefined
+    const resolved = await catalog(model, preferred)
+    if (!resolved) {
+      return openAiError(
+        res,
+        404,
+        `model "${model}" is not offered by any enabled dsh-connect-* provider. Use "provider/model" or set a default model in the plugin settings.`,
+        'model_not_found',
+      )
+    }
+    provider = resolved
   }
 
   let options
