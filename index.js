@@ -20,9 +20,18 @@
 
 import { createServer } from 'node:http'
 
-const CN_PROVIDER = 'workbuddy'
-const GLOBAL_PROVIDER = 'workbuddy-global'
-const PROVIDERS = [CN_PROVIDER, GLOBAL_PROVIDER]
+const WORKBUDDY_CN = 'workbuddy'
+const WORKBUDDY_GLOBAL = 'workbuddy-global'
+const QODER_CN = 'qoder'
+const QODER_GLOBAL = 'qoder-global'
+/**
+ * Every provider route this API may dispatch through, in catalog-priority
+ * order. `dsh-connect-workbuddy` registers the first two, `dsh-connect-qoder`
+ * the last two; a profile may have only some of them enabled.
+ */
+const PROVIDERS = [WORKBUDDY_CN, WORKBUDDY_GLOBAL, QODER_CN, QODER_GLOBAL]
+/** The id a client may put in `model` to mean "use the configured default". */
+const DEFAULT_MODEL_ALIAS = 'default'
 /** Fixed prefix this bundle's host rows live under; every route path is derived from it. */
 const BASE = '/plugins/dsh-xmm-ai'
 const CONFIG_PATH = `${BASE}/__config`
