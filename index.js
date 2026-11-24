@@ -824,7 +824,7 @@ export function apply(ctx, config) {
   }, `${BASE}: fixed-port listener`)
 }
 
-async function handleModels(res, webCtxArg) {
+async function handleModels(res, webCtxArg, cfg) {
   try {
     const llm = webCtxArg.llm
     if (!llm) return openAiError(res, 503, 'Harness LLM service is not available', 'service_unavailable')
@@ -853,7 +853,19 @@ async function handleModels(res, webCtxArg) {
         }
       }
     }
-    json(res, 200, { object: 'list', data })
+    // Advertise the alias clients may send instead of a real model id. It is
+    // listed first so it is the obvious choice in a picker; `owned_by` names the
+    // concrete model it resolves to.
+    if (cfg?.defaultModel) {
+      data.unshift({
+        id: DEFAULT_MODEL_ALIAS,
+        object: 'model',
+        created,
+        owned_by: 'dsh-xmm-ai',
+        resolved: cfg.defaultModel,
+      })
+    }
+    json(res, 200, { object: 'list', data, defaultModel: cfg?.defaultModel ?? '' })
   } catch (error) {
     openAiError(res, 500, error instanceof Error ? error.message : String(error), 'server_error')
   }
