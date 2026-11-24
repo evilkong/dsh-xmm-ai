@@ -1017,7 +1017,7 @@ window.__ModuleLoader__.load({
        *
        * A full `settings.section` (not a `settings.plugins.tab`) so the whole
        * configuration form lives in Settings → this section, exactly like the
-       * sibling workbuddy plugin. The section icon shares the same id.
+       * sibling dsh-connect-* plugins. The section icon shares the same id.
        */
       try {
         ctx.slots.inject('settings.section', () => {
