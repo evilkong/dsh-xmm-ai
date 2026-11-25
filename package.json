@@ -1,6 +1,6 @@
 {
   "name": "dsh-xmm-ai",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
   "type": "module",
   "description": "Expose the models connected by dsh-connect-* plugins (WorkBuddy, Qoder) as an OpenAI-compatible HTTP API, with a settings page and a configurable default model.",
