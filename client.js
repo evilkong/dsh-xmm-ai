@@ -769,12 +769,46 @@ window.__ModuleLoader__.load({
       portInput.addEventListener('input', refreshUrls)
 
       /**
-       * Fill the `<datalist>` from the live catalogs.
+       * Region catalogue from the last refresh: `[{ provider, count, models }]`.
        *
-       * Deliberately non-destructive: the typed value is left alone, so a user
-       * who already knows the id they want is never overridden by a refresh.
+       * Kept outside the DOM so changing the region dropdown can refill the model
+       * dropdown without another round-trip.
        */
-      const refreshModels = async () => {
+      let regions = []
+
+      /** Labels for the four provider routes; the value stays the route id. */
+      const REGION_LABELS = {
+        workbuddy: '国内（workbuddy）',
+        'workbuddy-global': '国际（workbuddy-global）',
+        qoder: '国内（qoder）',
+        'qoder-global': '国际（qoder-global）',
+      }
+
+      /** Rebuild the model dropdown for the region currently selected. */
+      const fillModels = (preferredModel) => {
+        const provider = regionInput.value
+        const region = regions.find((entry) => entry.provider === provider)
+        const models = region && Array.isArray(region.models) ? region.models : []
+        modelInput.textContent = ''
+        for (const id of models) {
+          modelInput.appendChild(el('option', { value: id, text: id }))
+        }
+        // Restore the saved model when it belongs to this region; otherwise fall
+        // back to the first available one so the control never sits empty.
+        if (preferredModel && models.includes(preferredModel)) modelInput.value = preferredModel
+        else if (models.length > 0) modelInput.value = models[0]
+        modelInput.disabled = models.length === 0
+      }
+
+      /**
+       * Read the live catalog and rebuild both dropdowns.
+       *
+       * The saved pair is passed in so a refresh never silently changes the
+       * selection: if the saved model still exists in its region it stays chosen.
+       */
+      const refreshModels = async (saved) => {
+        const wantedProvider = saved && saved.provider ? saved.provider : regionInput.value
+        const wantedModel = saved && typeof saved.model === 'string' ? saved.model : modelInput.value
         refreshModelsBtn.disabled = true
         modelStatus.textContent = '读取中…'
         modelStatus.style.color = ''
@@ -782,21 +816,32 @@ window.__ModuleLoader__.load({
           const response = await fetch(MODELS_PATH, { headers: { accept: 'application/json' } })
           const data = await response.json().catch(() => ({}))
           if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`)
-          const options = Array.isArray(data.options) ? data.options : []
-          modelOptions.textContent = ''
-          for (const option of options) {
-            modelOptions.appendChild(el('option', { value: option.value, label: option.value }))
+          regions = Array.isArray(data.regions) ? data.regions : []
+
+          regionInput.textContent = ''
+          for (const region of regions) {
+            regionInput.appendChild(el('option', {
+              value: region.provider,
+              text: `${REGION_LABELS[region.provider] || region.provider} · ${region.count}`,
+            }))
           }
-          const groups = Array.isArray(data.groups) ? data.groups : []
-          if (options.length === 0) {
+          if (regions.length === 0) {
             modelStatus.textContent = '没有可用模型，请先在 dsh-connect-* 插件里登录'
             modelStatus.style.color = '#b45309'
-          } else {
-            const summary = groups.map((g) => `${g.provider} ${g.count}`).join(' · ')
-            modelStatus.textContent = `${options.length} 个（${summary}）`
-            modelStatus.style.color = ''
+            modelInput.textContent = ''
+            modelInput.disabled = true
+            return
           }
-          report('dialog-models-refreshed', String(options.length))
+          // Keep the saved region when it is still live, else take the first.
+          regionInput.value = regions.some((region) => region.provider === wantedProvider)
+            ? wantedProvider
+            : regions[0].provider
+          fillModels(wantedModel)
+
+          const total = regions.reduce((sum, region) => sum + region.count, 0)
+          modelStatus.textContent = `${total} 个模型`
+          modelStatus.style.color = ''
+          report('dialog-models-refreshed', String(total))
         } catch (error) {
           modelStatus.textContent = `读取失败：${error && error.message ? error.message : error}`
           modelStatus.style.color = '#b91c1c'
@@ -806,6 +851,8 @@ window.__ModuleLoader__.load({
         }
       }
 
+      // Switching the region refills the model list from the cached catalog.
+      regionInput.addEventListener('change', () => { fillModels('') })
       refreshModelsBtn.addEventListener('click', () => { refreshModels() })
 
       saveBtn.addEventListener('click', async () => {
@@ -816,7 +863,8 @@ window.__ModuleLoader__.load({
             enabled: enabledInput.checked,
             apiPath: pathInput.value,
             apiKeys: serialiseKeys(),
-            defaultModel: modelInput.value.trim(),
+            defaultProvider: regionInput.value,
+            defaultModel: modelInput.value,
             allowRemote: remoteInput.checked,
             fixedPort: Math.max(0, Math.min(65535, Number(portInput.value) || 0)),
             showSidebar: sidebarInput.checked,
