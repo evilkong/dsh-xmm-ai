@@ -5,7 +5,8 @@
         enabled: true
         apiPath: /v1
         apiKeys: ''
-        defaultModel: ''
+        defaultProvider: workbuddy
+        defaultModel: deepseek-v4.1-flash
         allowRemote: false
         fixedPort: 0
         showSidebar: true

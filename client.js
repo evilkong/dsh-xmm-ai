@@ -310,7 +310,7 @@ window.__ModuleLoader__.load({
       return 'xmm-' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
     }
 
-    const BLANK_DRAFT = { enabled: true, apiPath: '/v1', apiKeys: '', defaultModel: '', allowRemote: false, fixedPort: 0, showSidebar: true }
+    const BLANK_DRAFT = { enabled: true, apiPath: '/v1', apiKeys: '', defaultProvider: 'workbuddy', defaultModel: 'deepseek-v4.1-flash', allowRemote: false, fixedPort: 0, showSidebar: true }
 
     /** Notify the host page that the sidebar-entry preference changed. */
     function notifySidebarChange(show) {
