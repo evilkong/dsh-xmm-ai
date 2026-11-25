@@ -56,7 +56,14 @@ const DIAG_PATH = `${BASE}/__diag`
 const CONFIG_DEFAULTS = Object.freeze({
   enabled: true,
   apiPath: '/v1',
-  defaultModel: '',
+  /**
+   * The default model is two fields, not one string: a region (which provider
+   * route to dispatch through) and a model id that belongs to that region. That
+   * keeps the settings page a pair of dependent dropdowns and makes it
+   * impossible to save a combination the catalogs do not offer.
+   */
+  defaultProvider: 'workbuddy',
+  defaultModel: 'deepseek-v4.1-flash',
   allowRemote: false,
   apiKeys: '',
   fixedPort: 0,
