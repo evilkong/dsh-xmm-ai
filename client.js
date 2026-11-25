@@ -796,14 +796,84 @@ window.__ModuleLoader__.load({
         'qoder-global': '国际（qoder-global）',
       }
 
+      /**
+       * Friendly names for the model ids. The qoder names are copied verbatim
+       * from dsh-connect-qoder's own catalog (`displayName`), so they are the
+       * authoritative product names rather than guesses. Unknown ids fall back
+       * to the raw id, which keeps new upstream models readable and safe.
+       * Display only: the option `value` stays the raw id that the API expects.
+       */
+      const MODEL_LABELS = {
+        // workbuddy
+        hy4std: '混元4 标准版',
+        'hy4flash-free': '混元4 极速版（免费）',
+        hy4flash: '混元4 极速版',
+        'deepseek-v4.1-flash': 'DeepSeek V4.1 Flash',
+        'deepseek-v4-pro': 'DeepSeek V4 Pro',
+        'glm-5.3': 'GLM 5.3',
+        'glm-5.3-flash': 'GLM 5.3 Flash',
+        'glm-5.2': 'GLM 5.2',
+        'space-bunny': 'Space Bunny',
+        'minimax-m3.1-flash': 'MiniMax M3.1 Flash',
+        'kimi-k3.1-pro': 'Kimi K3.1 Pro',
+        'kimi-k3-1': 'Kimi K3',
+        'kimi-k2.8-preview': 'Kimi K2.8 Preview',
+        'step-5-preview': 'Step 5 Preview',
+        'mimo-v2.6-pro': 'MiMo V2.6 Pro',
+        // qoder (dsh-connect-qoder displayName)
+        qmodel_38max: 'Qwen3.8-Max',
+        qfmodel: 'Qwen3.8-Flash',
+        dmodel: 'DeepSeek-V4-Pro',
+        dfmodel: 'DeepSeek-Flash',
+        gmodel: 'GLM-5.3',
+        gfmodel: 'GLM-5.3-Flash',
+        kmodel_latest: 'Kimi-K3.1-Pro',
+        kmodel: 'Kimi-K2.8-Preview',
+        mmodel: 'MiniMax-M3.1-Flash',
+        smodel: 'Sonus',
+        cmodel: 'Cantus',
+      }
+
+      /** Vendor groups, matched against the friendly name (raw id as fallback). */
+      const MODEL_GROUPS = [
+        ['腾讯混元', /混元|^hy\d/i],
+        ['DeepSeek', /deepseek/i],
+        ['GLM（智谱）', /glm/i],
+        ['Kimi', /kimi/i],
+        ['Qwen（通义）', /qwen/i],
+        ['MiniMax', /minimax/i],
+        ['其他', /.*/],
+      ]
+      const groupOf = (id, label) => {
+        const text = label && label !== id ? label : id
+        for (const [name, re] of MODEL_GROUPS) if (re.test(text)) return name
+        return '其他'
+      }
+
       /** Rebuild the model dropdown for the region currently selected. */
       const fillModels = (preferredModel) => {
         const provider = regionInput.value
         const region = regions.find((entry) => entry.provider === provider)
         const models = region && Array.isArray(region.models) ? region.models : []
         modelInput.textContent = ''
+        // Group by vendor with <optgroup>; option text is "友好名 (原始ID)"
+        // while the stored value remains the raw id — no API/cfg change.
+        const grouped = new Map()
         for (const id of models) {
-          modelInput.appendChild(el('option', { value: id, text: id }))
+          const label = MODEL_LABELS[id] || id
+          const group = groupOf(id, label)
+          if (!grouped.has(group)) grouped.set(group, [])
+          grouped.get(group).push({ id, label })
+        }
+        for (const [group, entries] of grouped) {
+          const og = el('optgroup', { label: group })
+          for (const { id, label } of entries) {
+            og.appendChild(el('option', {
+              value: id,
+              text: label === id ? id : `${label} (${id})`,
+            }))
+          }
+          modelInput.appendChild(og)
         }
         // Restore the saved model when it belongs to this region; otherwise fall
         // back to the first available one so the control never sits empty.
