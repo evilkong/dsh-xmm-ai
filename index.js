@@ -734,6 +734,15 @@ export function apply(ctx, config) {
           if (key === 'allowRemote' && typeof value !== 'boolean') {
             return json(res, 400, { error: 'allowRemote must be a boolean' })
           }
+          if (key === 'defaultProvider') {
+            if (typeof value !== 'string') return json(res, 400, { error: 'defaultProvider must be a string' })
+            try {
+              patch[key] = normalizeDefaultProvider(value, { strict: true })
+            } catch (error) {
+              return json(res, 400, { error: error instanceof Error ? error.message : String(error) })
+            }
+            continue
+          }
           if (key === 'defaultModel') {
             if (typeof value !== 'string') return json(res, 400, { error: 'defaultModel must be a string' })
             try {
@@ -812,6 +821,7 @@ export function apply(ctx, config) {
           },
           providers,
           keyCount: keys.length,
+          defaultProvider: cfg.defaultProvider,
           defaultModel: cfg.defaultModel,
         })
       },
