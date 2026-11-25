@@ -183,9 +183,12 @@ window.__ModuleLoader__.load({
      */
     const styles = {
       root: {
-        maxWidth: 760,
-        margin: '0 auto',
-        padding: '24px 20px 48px',
+        // Fill the panel the host gives us. A centred 760px column left huge
+        // gutters on a wide window, which read as broken layout in the sidebar.
+        width: '100%',
+        maxWidth: 'none',
+        margin: 0,
+        padding: '20px 28px 40px',
         color: 'var(--dsw-alias-label-primary, inherit)',
         fontFamily: 'inherit',
         boxSizing: 'border-box',
