@@ -931,7 +931,7 @@ window.__ModuleLoader__.load({
      * native DOM and attached to the returned container by a `ref`.
      */
     /** Container id the form mounts into; the lookup fallback needs a stable handle. */
-    const PANEL_HOST_ID = 'xmm-workbuddy-panel-host'
+    const PANEL_HOST_ID = 'xmm-ai-panel-host'
 
     /**
      * Attach the form to its container, or find the container and attach it.

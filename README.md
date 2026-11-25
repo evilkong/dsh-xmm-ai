@@ -73,9 +73,9 @@ DSH 桌面版启动时硬编码传 `--port 0`，所以宿主 Web 服务每次启
 |---|---|
 | 省略 / 空串 / `default` | 使用配置页的**默认模型** |
 | `qoder/qfmodel` 这类 `provider/model` | 按前缀直接路由到该 provider |
-| 裸 id（如 `qfmodel`） | 在当前已启用的 provider 目录里查找归属；多家都有时优先默认模型所属的那家 |
+| 裸 id（如 `qfmodel`） | 在当前已启用的 provider 目录里查找归属；多家都有时优先配置的默认区域 |
 
-`/models` 会额外返回一个 `id: "default"` 的虚拟条目，指向当前配置的默认模型，便于客户端直接填 `default`。
+`/models` 会额外返回一个 `id: "default"` 的虚拟条目，`resolved` 字段给出它实际使用的 `区域/模型`，便于客户端直接填 `default`。
 
 ## 用 OpenAI SDK 调用
 
