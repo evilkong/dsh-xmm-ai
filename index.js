@@ -177,6 +177,21 @@ function parseModelRef(value) {
 }
 
 /**
+ * Compose the configured default into `{ provider, model }`.
+ *
+ * `defaultModel` may still carry a `provider/` prefix from the single-field
+ * form; that prefix wins, because it names the route explicitly. Otherwise the
+ * configured `defaultProvider` supplies the region.
+ */
+function resolveDefaultSelection(cfg) {
+  const ref = parseModelRef(cfg?.defaultModel ?? '')
+  return {
+    provider: ref.provider ?? normalizeDefaultProvider(cfg?.defaultProvider),
+    model: ref.model,
+  }
+}
+
+/**
  * Parse the multi-key field into usable keys.
  *
  * One key per line; a trailing `# note` and blank lines are ignored, so a user
