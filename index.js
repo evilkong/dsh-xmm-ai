@@ -828,12 +828,13 @@ export function apply(ctx, config) {
     })
 
     /**
-     * Catalog for the settings page's "refresh models" button.
+     * Catalog for the settings page's cascade of default-region → default-model.
      *
      * Loopback-only and unauthenticated like the other `__` routes: it exposes
-     * the model roster of this machine's own profile, nothing secret. The
-     * response is a flat list of `provider/model` refs so the page can put them
-     * straight into a `<datalist>`.
+     * the model roster of this machine's own profile, nothing secret. Models are
+     * grouped per provider so the page can filter the second dropdown by the
+     * region picked in the first, and can say plainly which regions have nothing
+     * usable (no PAT, no sign-in).
      */
     route({
       kind: 'exact',
@@ -849,7 +850,7 @@ export function apply(ctx, config) {
         const llm = webCtx.llm ?? ctx.get?.('llm')
         if (!llm) return json(res, 503, { error: 'the LLM service is not available yet' })
         const live = new Set((llm.listProviders?.() ?? []).map((p) => p?.id))
-        const groups = []
+        const regions = []
         const options = []
         for (const provider of PROVIDERS) {
           if (!live.has(provider)) continue
@@ -865,9 +866,17 @@ export function apply(ctx, config) {
             ids.push(model.id)
             options.push({ value: `${provider}/${model.id}`, label: `${model.id} · ${provider}`, provider })
           }
-          if (ids.length > 0) groups.push({ provider, count: ids.length })
+          regions.push({ provider, count: ids.length, models: ids })
         }
-        json(res, 200, { options, groups, defaultModel: currentConfig().defaultModel })
+        const cfg = currentConfig()
+        json(res, 200, {
+          options,
+          regions,
+          // `groups` kept for older builds of the settings page.
+          groups: regions.map((region) => ({ provider: region.provider, count: region.count })),
+          defaultProvider: cfg.defaultProvider,
+          defaultModel: cfg.defaultModel,
+        })
       },
     })
 
