@@ -697,6 +697,15 @@ window.__ModuleLoader__.load({
         ]),
       ])
 
+      /**
+       * The saved default pair, applied once the catalog has been read.
+       *
+       * `applyConfig` runs before the model catalog is available, so it only
+       * records the selection; `refreshModels` uses it to pick the right region
+       * and model instead of clobbering the user's choice with the first entry.
+       */
+      let pendingSelection = null
+
       // --- behaviour --------------------------------------------------------
       const applyConfig = (cfg) => {
         enabledInput.checked = cfg.enabled !== false
@@ -708,7 +717,10 @@ window.__ModuleLoader__.load({
         if (parsed.length === 0) makeKeyRow('', '')
         else for (const item of parsed) makeKeyRow(item.key, item.note)
         refreshKeyCount()
-        modelInput.value = typeof cfg.defaultModel === 'string' ? cfg.defaultModel : ''
+        pendingSelection = {
+          provider: typeof cfg.defaultProvider === 'string' ? cfg.defaultProvider : '',
+          model: typeof cfg.defaultModel === 'string' ? cfg.defaultModel : '',
+        }
         remoteInput.checked = cfg.allowRemote === true
         portInput.value = String(Number(cfg.fixedPort) || 0)
         sidebarInput.checked = cfg.showSidebar !== false
@@ -745,8 +757,8 @@ window.__ModuleLoader__.load({
           const data = await response.json()
           applyConfig(data.config ?? {})
           setStatus('已加载', false)
-          // Populate the picker eagerly so the field is usable without a click.
-          refreshModels()
+          // Populate both dropdowns eagerly so the pair is usable without a click.
+          refreshModels(pendingSelection)
           report('dialog-loaded', JSON.stringify(Object.keys(data.config ?? {})))
         } catch (error) {
           setStatus(`加载失败：${error && error.message ? error.message : error}`, true)
