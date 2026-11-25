@@ -508,22 +508,15 @@ window.__ModuleLoader__.load({
       const enabledInput = el('input', { type: 'checkbox', style: DLG.check, id: 'xmm-dlg-enabled' })
       const pathInput = el('input', { type: 'text', style: DLG.input, id: 'xmm-dlg-path', value: '/v1' })
       /**
-       * Default model picker.
+       * Default model picker: region first, then a model from that region.
        *
-       * A text field plus a `<datalist>` populated by the "refresh" button: the
-       * value may be typed by hand (`qoder/qfmodel`) or picked from the live
-       * catalog, and refreshing never clobbers a hand-typed value.
+       * Two dependent dropdowns rather than one free-text field. The model list
+       * is filtered by the chosen provider, so an impossible pair (a qoder model
+       * filed under workbuddy) cannot be saved by hand. Both are filled from the
+       * live catalogs on load; the button forces a re-read.
        */
-      const modelInput = el('input', {
-        type: 'text',
-        style: DLG.input,
-        id: 'xmm-dlg-model',
-        value: '',
-        placeholder: '例如 qoder/qfmodel；留空则要求客户端必须指定 model',
-        list: 'xmm-dlg-model-options',
-        autocomplete: 'off',
-      })
-      const modelOptions = el('datalist', { id: 'xmm-dlg-model-options' })
+      const regionInput = el('select', { style: DLG.select, id: 'xmm-dlg-region' }, [])
+      const modelInput = el('select', { style: DLG.select, id: 'xmm-dlg-model' }, [])
       const refreshModelsBtn = el('button', { style: DLG.button, type: 'button', text: '刷新模型' })
       const modelStatus = el('span', { style: DLG.hint }, [''])
       const remoteInput = el('input', { type: 'checkbox', style: DLG.check, id: 'xmm-dlg-remote' })
