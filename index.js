@@ -88,6 +88,8 @@ function normalizeField(key, value) {
       return value === undefined ? CONFIG_DEFAULTS.enabled : value === true
     case 'apiPath':
       return normalizeApiPath(value)
+    case 'defaultProvider':
+      return normalizeDefaultProvider(value)
     case 'defaultModel':
       return normalizeDefaultModel(value)
     case 'allowRemote':
@@ -113,11 +115,31 @@ function normalizeApiPath(value) {
 }
 
 /**
- * Accept `qoder/qfmodel`, `qfmodel`, or an empty value.
+ * Accept a provider route id, or fall back to the built-in default.
  *
- * A bare id is stored as-is: which provider owns it is decided per request from
- * the live catalogs, so the same setting keeps working if a model moves between
- * regions. Only obviously bogus input is rejected.
+ * Only the four routes this API serves are valid: a region the plugin cannot
+ * dispatch through would make the default model unusable.
+ */
+function normalizeDefaultProvider(value, { strict = false } = {}) {
+  if (value === undefined || value === null || value === '') return CONFIG_DEFAULTS.defaultProvider
+  if (typeof value !== 'string') {
+    if (strict) throw new Error('defaultProvider must be a provider id')
+    return CONFIG_DEFAULTS.defaultProvider
+  }
+  const text = value.trim()
+  if (!PROVIDERS.includes(text)) {
+    if (strict) throw new Error(`defaultProvider must be one of: ${PROVIDERS.join(', ')}`)
+    return CONFIG_DEFAULTS.defaultProvider
+  }
+  return text
+}
+
+/**
+ * Accept a plain model id such as `deepseek-v4.1-flash`.
+ *
+ * A `provider/model` value is also accepted for backwards compatibility with
+ * the single-field form: the prefix wins over `defaultProvider`, because the
+ * user explicitly named where the model lives.
  */
 function normalizeDefaultModel(value, { strict = false } = {}) {
   if (value === undefined || value === null) return CONFIG_DEFAULTS.defaultModel
@@ -125,7 +147,7 @@ function normalizeDefaultModel(value, { strict = false } = {}) {
   const text = value.trim()
   if (text === '') return ''
   if (!MODEL_REF_PATTERN.test(text) || text.startsWith('/') || text.endsWith('/')) {
-    if (strict) throw new Error('defaultModel must look like "qoder/qfmodel" or "qfmodel"')
+    if (strict) throw new Error('defaultModel must be a model id such as "deepseek-v4.1-flash"')
     return CONFIG_DEFAULTS.defaultModel
   }
   return text
@@ -182,6 +204,7 @@ function readConfig(config) {
   return {
     enabled: normalizeField('enabled', unwrap(raw.enabled)),
     apiPath: normalizeField('apiPath', unwrap(raw.apiPath)),
+    defaultProvider: normalizeField('defaultProvider', unwrap(raw.defaultProvider)),
     defaultModel: normalizeField('defaultModel', unwrap(raw.defaultModel)),
     allowRemote: normalizeField('allowRemote', unwrap(raw.allowRemote)),
     apiKeys: normalizeField('apiKeys', unwrap(raw.apiKeys)),
