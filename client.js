@@ -656,14 +656,16 @@ window.__ModuleLoader__.load({
         ]),
 
         el('div', { style: DLG.row }, [
-          el('label', { style: DLG.label, for: 'xmm-dlg-model' }, ['默认模型']),
+          el('div', { style: DLG.label }, ['默认模型']),
           el('div', { style: 'display:flex;align-items:center;gap:10px;flex-wrap:wrap' }, [
+            el('label', { style: DLG.hint, for: 'xmm-dlg-region' }, ['区域']),
+            regionInput,
+            el('label', { style: DLG.hint, for: 'xmm-dlg-model' }, ['模型']),
             modelInput,
             refreshModelsBtn,
             modelStatus,
           ]),
-          modelOptions,
-          el('div', { style: DLG.hint }, ['请求未指定 model 或填 default 时使用该模型。点「刷新模型」从当前已启用的 dsh-connect-* 插件读取可用模型。']),
+          el('div', { style: DLG.hint }, ['请求未指定 model 或填 default 时使用。先选区域，再选该区域的模型；点「刷新模型」重新读取已启用的 dsh-connect-* 插件。']),
         ]),
 
         el('div', { style: DLG.checkRow }, [
