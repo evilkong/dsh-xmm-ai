@@ -956,18 +956,24 @@ async function handleModels(res, webCtxArg, cfg) {
       }
     }
     // Advertise the alias clients may send instead of a real model id. It is
-    // listed first so it is the obvious choice in a picker; `owned_by` names the
-    // concrete model it resolves to.
-    if (cfg?.defaultModel) {
+    // listed first so it is the obvious choice in a picker; `resolved` names the
+    // concrete `provider/model` it dispatches through.
+    const fallback = resolveDefaultSelection(cfg)
+    if (fallback.model) {
       data.unshift({
         id: DEFAULT_MODEL_ALIAS,
         object: 'model',
         created,
         owned_by: 'dsh-xmm-ai',
-        resolved: cfg.defaultModel,
+        resolved: `${fallback.provider}/${fallback.model}`,
       })
     }
-    json(res, 200, { object: 'list', data, defaultModel: cfg?.defaultModel ?? '' })
+    json(res, 200, {
+      object: 'list',
+      data,
+      defaultProvider: fallback.model ? fallback.provider : '',
+      defaultModel: fallback.model,
+    })
   } catch (error) {
     openAiError(res, 500, error instanceof Error ? error.message : String(error), 'server_error')
   }
@@ -1003,7 +1009,8 @@ async function handleChat(req, res, webCtxArg, cfg, attachments) {
    */
   const requested = typeof body.model === 'string' ? body.model.trim() : ''
   const wantsDefault = requested === '' || requested === DEFAULT_MODEL_ALIAS
-  if (wantsDefault && !cfg.defaultModel) {
+  const fallback = resolveDefaultSelection(cfg)
+  if (wantsDefault && !fallback.model) {
     return openAiError(
       res,
       400,
@@ -1012,7 +1019,7 @@ async function handleChat(req, res, webCtxArg, cfg, attachments) {
     )
   }
 
-  const ref = parseModelRef(wantsDefault ? cfg.defaultModel : requested)
+  const ref = wantsDefault ? { provider: fallback.provider, model: fallback.model } : parseModelRef(requested)
   let model = ref.model
   let provider = ref.provider
   if (!model) return openAiError(res, 400, 'empty model id')
@@ -1030,9 +1037,8 @@ async function handleChat(req, res, webCtxArg, cfg, attachments) {
       )
     }
   } else {
-    // Prefer the default model's own provider when ids collide across regions.
-    const preferred = cfg.defaultModel ? parseModelRef(cfg.defaultModel).provider : undefined
-    const resolved = await catalog(model, preferred)
+    // Prefer the configured default region when ids collide across providers.
+    const resolved = await catalog(model, fallback.provider || undefined)
     if (!resolved) {
       return openAiError(
         res,
